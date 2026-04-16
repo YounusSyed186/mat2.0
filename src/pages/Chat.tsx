@@ -174,7 +174,7 @@ export default function Chat() {
     }
 
     // Create notification for receiver
-    await createNotification(otherUserId, 'message', currentUser.id);
+    await createNotification(otherUserId, 'message', currentUser.id, myProfile?.name || 'Someone');
 
     setSending(false);
   };

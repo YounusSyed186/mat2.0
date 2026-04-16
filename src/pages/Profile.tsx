@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { BlockedUsersList } from "@/components/BlockedUsersList";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
@@ -360,6 +361,12 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
           </form>
         </CardContent>
       </Card>
+
+      {mode === "edit" && (
+        <div className="mt-4">
+          <BlockedUsersList />
+        </div>
+      )}
     </div>
   );
 

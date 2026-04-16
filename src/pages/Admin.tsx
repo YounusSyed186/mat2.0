@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
-import type { Profile, Interest, Message, Report } from "@/types";
+import type { Profile, Interest, Message, Report, UserBlock } from "@/types";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, Heart, MessageCircle, Ban, Trash2, CheckCircle, Flag, AlertTriangle } from "lucide-react";
+import { Shield, Users, Heart, MessageCircle, Ban, Trash2, CheckCircle, Flag, AlertTriangle, ArrowRight, ShieldOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
@@ -19,20 +19,23 @@ export default function Admin() {
   const [interests, setInterests] = useState<Interest[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
+  const [blocks, setBlocks] = useState<UserBlock[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = async () => {
     setLoading(true);
-    const [{ data: u }, { data: i }, { data: m }, { data: r }] = await Promise.all([
+    const [{ data: u }, { data: i }, { data: m }, { data: r }, { data: b }] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("interests").select("*, sender:profiles!sender_id(name), receiver:profiles!receiver_id(name)").order("created_at", { ascending: false }),
       supabase.from("messages").select("*, sender:profiles!sender_id(name)").order("created_at", { ascending: false }).limit(100),
       supabase.from("reports").select("*, reporter:profiles!reporter_id(name), reported_user:profiles!reported_user_id(name)").order("created_at", { ascending: false }),
+      supabase.from("user_blocks").select("*, blocker:profiles!blocker_id(name, id), blocked:profiles!blocked_id(name, id)").order("created_at", { ascending: false }),
     ]);
     setUsers((u as Profile[]) || []);
     setInterests((i as Interest[]) || []);
     setMessages((m as Message[]) || []);
     setReports((r as Report[]) || []);
+    setBlocks((b as UserBlock[]) || []);
     setLoading(false);
   };
 
@@ -103,12 +106,22 @@ export default function Admin() {
     }
   };
 
+  const handleRemoveBlock = async (blockId: string) => {
+    const { error } = await supabase.from("user_blocks").delete().eq("id", blockId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Block removed by admin" });
+      fetchAll();
+    }
+  };
+
   const stats = [
     { label: "Total Users", value: users.length, icon: Users },
     { label: "Interests", value: interests.length, icon: Heart },
     { label: "Messages", value: messages.length, icon: MessageCircle },
     { label: "Reports", value: reports.length, icon: Flag },
-    { label: "Blocked Users", value: users.filter((u) => u.is_blocked).length, icon: Ban },
+    { label: "Active Blocks", value: blocks.length, icon: Ban },
   ];
 
   return (
@@ -136,10 +149,18 @@ export default function Admin() {
         </div>
 
         <Tabs defaultValue="users">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap">
             <TabsTrigger value="users" data-testid="admin-tab-users">Users</TabsTrigger>
             <TabsTrigger value="interests" data-testid="admin-tab-interests">Interests</TabsTrigger>
             <TabsTrigger value="messages" data-testid="admin-tab-messages">Messages</TabsTrigger>
+            <TabsTrigger value="blocks" data-testid="admin-tab-blocks">
+              Blocks
+              {blocks.length > 0 && (
+                <span className="ml-2 bg-amber-500 text-white text-xs rounded-full px-1.5 py-0.5">
+                  {blocks.length}
+                </span>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="reports" data-testid="admin-tab-reports">
               Reports
               {reports.length > 0 && (
@@ -150,6 +171,7 @@ export default function Admin() {
             </TabsTrigger>
           </TabsList>
 
+          {/* ====== USERS TAB ====== */}
           <TabsContent value="users">
             <Card className="border-card-border">
               <CardHeader className="pb-3">
@@ -220,6 +242,7 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
+          {/* ====== INTERESTS TAB ====== */}
           <TabsContent value="interests">
             <Card className="border-card-border">
               <CardHeader className="pb-3">
@@ -275,6 +298,7 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
+          {/* ====== MESSAGES TAB ====== */}
           <TabsContent value="messages">
             <Card className="border-card-border">
               <CardHeader className="pb-3">
@@ -324,6 +348,90 @@ export default function Admin() {
             </Card>
           </TabsContent>
 
+          {/* ====== BLOCKS TAB ====== */}
+          <TabsContent value="blocks">
+            <Card className="border-card-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Ban className="h-4 w-4 text-amber-600" />
+                  User Blocks ({blocks.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                ) : blocks.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Ban className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No active blocks between users</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="pb-2 font-medium text-muted-foreground">Blocker</th>
+                          <th className="pb-2 font-medium text-muted-foreground"></th>
+                          <th className="pb-2 font-medium text-muted-foreground">Blocked User</th>
+                          <th className="pb-2 font-medium text-muted-foreground">Date</th>
+                          <th className="pb-2 font-medium text-muted-foreground">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {blocks.map((b) => {
+                          const blockerName = (b.blocker as { name: string } | undefined)?.name || "Unknown";
+                          const blockedName = (b.blocked as { name: string } | undefined)?.name || "Unknown";
+                          return (
+                            <tr key={b.id} data-testid={`row-block-${b.id}`}>
+                              <td className="py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-7 w-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-xs font-bold flex-shrink-0">
+                                    {blockerName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="font-medium">{blockerName}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 text-center">
+                                <div className="flex items-center justify-center">
+                                  <ArrowRight className="h-4 w-4 text-destructive" />
+                                  <Badge variant="destructive" className="text-[10px] px-1.5 py-0 ml-1">blocked</Badge>
+                                </div>
+                              </td>
+                              <td className="py-2.5">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs font-bold flex-shrink-0">
+                                    {blockedName.charAt(0).toUpperCase()}
+                                  </div>
+                                  <span className="font-medium">{blockedName}</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 text-muted-foreground text-xs whitespace-nowrap">
+                                {formatDistanceToNow(new Date(b.created_at), { addSuffix: true })}
+                              </td>
+                              <td className="py-2.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={() => handleRemoveBlock(b.id)}
+                                  data-testid={`button-remove-block-${b.id}`}
+                                >
+                                  <ShieldOff className="h-3 w-3 mr-1" />
+                                  Remove Block
+                                </Button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* ====== REPORTS TAB ====== */}
           <TabsContent value="reports">
             <Card className="border-card-border">
               <CardHeader className="pb-3">

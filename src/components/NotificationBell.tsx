@@ -21,14 +21,15 @@ function notifIcon(type: Notification['type']) {
   }
 }
 
-function notifLabel(type: Notification['type']) {
+function notifLabel(type: Notification['type'], metadata?: string | null) {
+  const name = metadata || 'Someone';
   switch (type) {
     case 'interest_received':
-      return 'New interest received';
+      return `${name} sent you an interest`;
     case 'interest_accepted':
-      return 'Your interest was accepted';
+      return `${name} accepted your interest`;
     case 'message':
-      return 'New message received';
+      return `New message from ${name}`;
     default:
       return 'Notification';
   }
@@ -125,7 +126,7 @@ export function NotificationBell() {
                   <div className="mt-0.5">{notifIcon(n.type)}</div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${!n.is_read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                      {notifLabel(n.type)}
+                      {notifLabel(n.type, n.metadata)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}

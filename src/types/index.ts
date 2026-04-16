@@ -39,6 +39,8 @@ export interface UserBlock {
   blocker_id: string;
   blocked_id: string;
   created_at: string;
+  blocker?: Profile | { name: string };
+  blocked?: Profile | { name: string };
 }
 
 export interface Report {
@@ -58,4 +60,5 @@ export interface Notification {
   reference_id: string | null;
   is_read: boolean;
   created_at: string;
+  metadata?: string | null;
 }

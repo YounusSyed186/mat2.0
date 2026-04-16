@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   type TEXT NOT NULL CHECK (type IN ('interest_received', 'interest_accepted', 'message')),
   reference_id UUID,
   is_read BOOLEAN NOT NULL DEFAULT false,
+  metadata TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -78,6 +79,17 @@ CREATE POLICY "Users can view own blocks"
   TO authenticated
   USING (blocker_id = auth.uid() OR blocked_id = auth.uid());
 
+-- Admins can view all blocks
+CREATE POLICY "Admins can view all blocks"
+  ON user_blocks FOR SELECT
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
+
 -- Users can block others
 CREATE POLICY "Users can create blocks"
   ON user_blocks FOR INSERT
@@ -89,6 +101,17 @@ CREATE POLICY "Users can delete own blocks"
   ON user_blocks FOR DELETE
   TO authenticated
   USING (blocker_id = auth.uid());
+
+-- Admins can remove any blocks
+CREATE POLICY "Admins can delete any blocks"
+  ON user_blocks FOR DELETE
+  TO authenticated
+  USING (
+    EXISTS (
+      SELECT 1 FROM profiles
+      WHERE id = auth.uid() AND role = 'admin'
+    )
+  );
 
 -- ============================================================================
 -- REPORTS POLICIES

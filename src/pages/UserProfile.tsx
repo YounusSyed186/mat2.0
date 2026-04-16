@@ -34,6 +34,7 @@ export default function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [unblockDialogOpen, setUnblockDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [blocking, setBlocking] = useState(false);
 
@@ -79,7 +80,7 @@ export default function UserProfile() {
       setInterest(data as Interest);
       toast({ title: "Interest sent!", description: `Your interest has been sent to ${profile?.name}.` });
       // Create notification for receiver
-      await createNotification(userId, 'interest_received', currentUser.id);
+      await createNotification(userId, 'interest_received', currentUser.id, myProfile?.name || 'Someone');
     }
     setSending(false);
   };
@@ -286,7 +287,7 @@ export default function UserProfile() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={handleUnblock}
+                    onClick={() => setUnblockDialogOpen(true)}
                     disabled={blocking}
                     data-testid="button-unblock-user"
                   >
@@ -333,6 +334,24 @@ export default function UserProfile() {
             <AlertDialogCancel data-testid="block-cancel-btn">Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleBlock} data-testid="block-confirm-btn">
               Block
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Unblock Confirmation Dialog */}
+      <AlertDialog open={unblockDialogOpen} onOpenChange={setUnblockDialogOpen}>
+        <AlertDialogContent data-testid="unblock-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unblock {profile.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              After unblocking, {profile.name} will be able to see your profile, send you interests, and message you again. They will also appear in your browse results.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="unblock-cancel-btn">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => { await handleUnblock(); setUnblockDialogOpen(false); }} data-testid="unblock-confirm-btn">
+              Unblock
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

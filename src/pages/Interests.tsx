@@ -18,7 +18,7 @@ import { formatDistanceToNow } from "date-fns";
 
 export default function Interests() {
   const [, setLocation] = useLocation();
-  const { currentUser } = useAuth();
+  const { currentUser, profile: myProfile } = useAuth();
   const { toast } = useToast();
   const { isBlockRelation, fetchBlocks } = useBlockStore();
   const { createNotification } = useNotificationStore();
@@ -63,9 +63,9 @@ export default function Interests() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: status === "accepted" ? "Interest accepted!" : "Interest rejected" });
-      // Create notification for the sender
+      // Create notification for the sender with current user's name
       if (status === "accepted" && currentUser) {
-        await createNotification(senderId, 'interest_accepted', currentUser.id);
+        await createNotification(senderId, 'interest_accepted', currentUser.id, myProfile?.name || 'Someone');
       }
       fetchInterests();
     }

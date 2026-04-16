@@ -12,7 +12,7 @@ interface NotificationStore {
   markAsRead: (notificationId: string) => Promise<void>;
   markAllAsRead: (userId: string) => Promise<void>;
   addNotification: (notification: Notification) => void;
-  createNotification: (userId: string, type: Notification['type'], referenceId?: string) => Promise<void>;
+  createNotification: (userId: string, type: Notification['type'], referenceId?: string, metadata?: string) => Promise<void>;
   subscribeToNotifications: (userId: string) => void;
   unsubscribe: () => void;
 }
@@ -83,13 +83,14 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     }));
   },
 
-  createNotification: async (userId: string, type: Notification['type'], referenceId?: string) => {
+  createNotification: async (userId: string, type: Notification['type'], referenceId?: string, metadata?: string) => {
     try {
       await supabase.from('notifications').insert({
         user_id: userId,
         type,
         reference_id: referenceId || null,
         is_read: false,
+        metadata: metadata || null,
       });
     } catch {
       // Table may not exist yet
