@@ -21,13 +21,17 @@ export const useBlockStore = create<BlockStore>((set, get) => ({
 
   fetchBlocks: async (userId: string) => {
     set({ loading: true, currentUserId: userId });
-    const { data, error } = await supabase
-      .from('user_blocks')
-      .select('*')
-      .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
+    try {
+      const { data, error } = await supabase
+        .from('user_blocks')
+        .select('*')
+        .or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
 
-    if (!error && data) {
-      set({ blocks: data as UserBlock[] });
+      if (!error && data) {
+        set({ blocks: data as UserBlock[] });
+      }
+    } catch {
+      // Table may not exist yet - silently ignore
     }
     set({ loading: false });
   },

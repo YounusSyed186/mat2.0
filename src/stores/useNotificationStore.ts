@@ -25,19 +25,23 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
 
   fetchNotifications: async (userId: string) => {
     set({ loading: true });
-    const { data, error } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false })
-      .limit(50);
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    if (!error && data) {
-      const notifs = data as Notification[];
-      set({
-        notifications: notifs,
-        unreadCount: notifs.filter(n => !n.is_read).length,
-      });
+      if (!error && data) {
+        const notifs = data as Notification[];
+        set({
+          notifications: notifs,
+          unreadCount: notifs.filter(n => !n.is_read).length,
+        });
+      }
+    } catch {
+      // Table may not exist yet
     }
     set({ loading: false });
   },
@@ -80,12 +84,16 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
   },
 
   createNotification: async (userId: string, type: Notification['type'], referenceId?: string) => {
-    await supabase.from('notifications').insert({
-      user_id: userId,
-      type,
-      reference_id: referenceId || null,
-      is_read: false,
-    });
+    try {
+      await supabase.from('notifications').insert({
+        user_id: userId,
+        type,
+        reference_id: referenceId || null,
+        is_read: false,
+      });
+    } catch {
+      // Table may not exist yet
+    }
   },
 
   subscribeToNotifications: (userId: string) => {
