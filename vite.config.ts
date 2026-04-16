@@ -10,4 +10,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+  },
+  // If deployed in a subdirectory like example.com/app, use:
+  // base: '/app/',
+  // For root deployment (example.com), leave base as default or use:
+  base: '/',
 })

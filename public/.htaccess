@@ -1,0 +1,26 @@
+<IfModule mod_rewrite.c>
+  # Enable mod_rewrite
+  RewriteEngine On
+
+  # Remove .html extension from URLs (optional, only if needed)
+  # RewriteCond %{REQUEST_FILENAME} !-f
+  # RewriteRule ^([^\.]+)$ $1.html [NC,L]
+
+  # Handle SPA routing: redirect all requests to index.html
+  # This ensures React Router/Wouter can handle all routes
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# Cache control for static assets
+<FilesMatch "\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$">
+  Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+
+# Don't cache HTML files
+<FilesMatch "\.html$">
+  Header set Cache-Control "public, max-age=0, must-revalidate"
+</FilesMatch>
