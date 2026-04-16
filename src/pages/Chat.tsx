@@ -2,23 +2,18 @@ import { useState, useEffect, useRef } from "react";
 import { useRoute, useLocation } from "wouter";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
+import { useBlockStore } from "@/stores/useBlockStore";
+import { useChatStore } from "@/stores/useChatStore";
+import { useNotificationStore } from "@/stores/useNotificationStore";
 import type { Message, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "@/components/UserAvatar";
-import { ArrowLeft, Send, Lock, Wifi } from "lucide-react";
+import { ArrowLeft, Send, Lock, Wifi, Ban } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-
-type BroadcastMessage = {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  content: string;
-  created_at: string;
-};
 
 export default function Chat() {
   const [, setLocation] = useLocation();
@@ -26,6 +21,10 @@ export default function Chat() {
   const otherUserId = params?.userId;
   const { currentUser, profile: myProfile } = useAuth();
   const { toast } = useToast();
+  const { isBlockRelation, fetchBlocks } = useBlockStore();
+  const { joinChat, leaveChat, sendMessage, setActiveChatUser } = useChatStore();
+  const { createNotification } = useNotificationStore();
+
   const [otherProfile, setOtherProfile] = useState<Profile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -33,17 +32,20 @@ export default function Chat() {
   const [canChat, setCanChat] = useState(false);
   const [sending, setSending] = useState(false);
   const [connected, setConnected] = useState(false);
+  const [isUserBlocked, setIsUserBlocked] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
 
-  // Stable channel name regardless of who initiates
+  // Stable channel name
   const channelName = currentUser && otherUserId
     ? `chat:${[currentUser.id, otherUserId].sort().join(":")}`
     : null;
 
   useEffect(() => {
     if (!otherUserId || !currentUser) return;
+
+    fetchBlocks(currentUser.id);
+    setActiveChatUser(otherUserId);
 
     const fetchAll = async () => {
       setLoading(true);
@@ -76,39 +78,47 @@ export default function Chat() {
       setLoading(false);
     };
     fetchAll();
+
+    return () => {
+      setActiveChatUser(null);
+    };
   }, [otherUserId, currentUser]);
+
+  // Check block status reactively
+  useEffect(() => {
+    if (otherUserId) {
+      setIsUserBlocked(isBlockRelation(otherUserId));
+    }
+  }, [otherUserId, isBlockRelation]);
 
   // Real-time WebSocket channel via Supabase Broadcast
   useEffect(() => {
-    if (!canChat || !currentUser || !otherUserId || !channelName) return;
+    if (!canChat || !currentUser || !otherUserId || !channelName || isUserBlocked) return;
 
     const channel = supabase.channel(channelName, {
       config: { broadcast: { self: false } },
     });
 
     channel
-      .on("broadcast", { event: "new-message" }, ({ payload }: { payload: BroadcastMessage }) => {
-        // Only accept messages that belong to this conversation
+      .on("broadcast", { event: "new-message" }, ({ payload }) => {
+        const msg = payload as Message;
         const isForMe =
-          payload.sender_id === otherUserId && payload.receiver_id === currentUser.id;
+          msg.sender_id === otherUserId && msg.receiver_id === currentUser.id;
         if (!isForMe) return;
 
-        if (seenIds.current.has(payload.id)) return;
-        seenIds.current.add(payload.id);
-        setMessages((prev) => [...prev, payload as Message]);
+        if (seenIds.current.has(msg.id)) return;
+        seenIds.current.add(msg.id);
+        setMessages((prev) => [...prev, msg]);
       })
       .subscribe((status) => {
         setConnected(status === "SUBSCRIBED");
       });
 
-    channelRef.current = channel;
-
     return () => {
       supabase.removeChannel(channel);
-      channelRef.current = null;
       setConnected(false);
     };
-  }, [canChat, currentUser, otherUserId, channelName]);
+  }, [canChat, currentUser, otherUserId, channelName, isUserBlocked]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -119,6 +129,10 @@ export default function Chat() {
     if (!newMessage.trim() || !currentUser || !otherUserId) return;
     if (myProfile?.is_blocked) {
       toast({ title: "Your account is blocked", variant: "destructive" });
+      return;
+    }
+    if (isUserBlocked) {
+      toast({ title: "Cannot send message", description: "There is a block between you and this user.", variant: "destructive" });
       return;
     }
 
@@ -148,14 +162,19 @@ export default function Chat() {
       setMessages((prev) => [...prev, sent]);
     }
 
-    // Broadcast to the other user's WebSocket channel
-    if (channelRef.current) {
-      await channelRef.current.send({
+    // Broadcast to the other user via channel
+    const key = `chat:${[currentUser.id, otherUserId].sort().join(":")}`;
+    const existingChannel = supabase.channel(key);
+    if (existingChannel) {
+      await existingChannel.send({
         type: "broadcast",
         event: "new-message",
         payload: sent,
       });
     }
+
+    // Create notification for receiver
+    await createNotification(otherUserId, 'message', currentUser.id);
 
     setSending(false);
   };
@@ -210,7 +229,7 @@ export default function Chat() {
           ) : (
             <span className="text-sm text-muted-foreground flex-1">Chat</span>
           )}
-          {canChat && (
+          {canChat && !isUserBlocked && (
             <div
               className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
                 connected
@@ -225,8 +244,22 @@ export default function Chat() {
           )}
         </div>
 
+        {/* Blocked banner */}
+        {!loading && isUserBlocked && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-4">
+            <Ban className="h-12 w-12 text-destructive/30" />
+            <h3 className="font-medium text-foreground">Chat Unavailable</h3>
+            <p className="text-sm text-muted-foreground max-w-xs">
+              Messaging is not available due to a block between you and this user.
+            </p>
+            <Button variant="outline" onClick={() => setLocation("/chat")}>
+              Back to Messages
+            </Button>
+          </div>
+        )}
+
         {/* Content */}
-        {!loading && !canChat ? (
+        {!loading && !canChat && !isUserBlocked ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-4">
             <Lock className="h-12 w-12 text-muted-foreground/30" />
             <h3 className="font-medium text-foreground">Chat Locked</h3>
@@ -237,7 +270,7 @@ export default function Chat() {
               Go to Interests
             </Button>
           </div>
-        ) : (
+        ) : !isUserBlocked && (
           <>
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-4 bg-background">

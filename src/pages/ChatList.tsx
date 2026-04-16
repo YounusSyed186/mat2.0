@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
+import { useBlockStore } from "@/stores/useBlockStore";
 import type { Interest, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -12,8 +13,13 @@ import { MessageCircle, ChevronRight } from "lucide-react";
 export default function ChatList() {
   const [, setLocation] = useLocation();
   const { currentUser } = useAuth();
+  const { isBlockRelation, fetchBlocks } = useBlockStore();
   const [conversations, setConversations] = useState<{ person: Profile; interest: Interest }[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (currentUser) fetchBlocks(currentUser.id);
+  }, [currentUser]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -38,11 +44,14 @@ export default function ChatList() {
       (recv as Interest[] || []).forEach((i) => {
         if (i.sender) convos.push({ person: i.sender as Profile, interest: i });
       });
-      setConversations(convos);
+
+      // Filter out blocked users
+      const filtered = convos.filter(c => !isBlockRelation(c.person.id));
+      setConversations(filtered);
       setLoading(false);
     };
     fetchConversations();
-  }, [currentUser]);
+  }, [currentUser, isBlockRelation]);
 
   return (
     <Layout>

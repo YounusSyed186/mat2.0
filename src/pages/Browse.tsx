@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
+import { useBlockStore } from "@/stores/useBlockStore";
 import type { Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -12,16 +13,18 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { MapPin, GraduationCap, Briefcase, Search, SlidersHorizontal } from "lucide-react";
+import { MapPin, GraduationCap, Briefcase, Search, SlidersHorizontal, Sparkles } from "lucide-react";
 
 const RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Other"];
 
 export default function Browse() {
   const [, setLocation] = useLocation();
-  const { currentUser } = useAuth();
+  const { currentUser, profile: myProfile } = useAuth();
+  const { blocks, fetchBlocks } = useBlockStore();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
+  const [smartSort, setSmartSort] = useState(true);
   const [filters, setFilters] = useState({
     gender: "",
     minAge: "",
@@ -29,6 +32,10 @@ export default function Browse() {
     city: "",
     religion: "",
   });
+
+  useEffect(() => {
+    if (currentUser) fetchBlocks(currentUser.id);
+  }, [currentUser]);
 
   const fetchProfiles = async () => {
     if (!currentUser) return;
@@ -47,13 +54,49 @@ export default function Browse() {
     if (filters.religion) query = query.eq("religion", filters.religion);
 
     const { data, error } = await query;
-    if (!error) setProfiles((data as Profile[]) || []);
+    if (!error && data) {
+      let result = data as Profile[];
+
+      // Filter out blocked users (both directions)
+      const blockedIds = new Set(
+        blocks.map(b => b.blocker_id === currentUser.id ? b.blocked_id : b.blocker_id)
+      );
+      result = result.filter(p => !blockedIds.has(p.id));
+
+      // Smart sorting: prioritize same city, same religion, recently active
+      if (smartSort && myProfile) {
+        result.sort((a, b) => {
+          let scoreA = 0;
+          let scoreB = 0;
+
+          // Same city: +3 points
+          if (a.city?.toLowerCase() === myProfile.city?.toLowerCase()) scoreA += 3;
+          if (b.city?.toLowerCase() === myProfile.city?.toLowerCase()) scoreB += 3;
+
+          // Same religion: +2 points
+          if (a.religion === myProfile.religion) scoreA += 2;
+          if (b.religion === myProfile.religion) scoreB += 2;
+
+          // Recently active (newer profiles): +1 point
+          const dayMs = 7 * 24 * 60 * 60 * 1000;
+          const now = Date.now();
+          if (now - new Date(a.created_at).getTime() < dayMs) scoreA += 1;
+          if (now - new Date(b.created_at).getTime() < dayMs) scoreB += 1;
+
+          if (scoreB !== scoreA) return scoreB - scoreA;
+          // If equal score, sort by newest first
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      }
+
+      setProfiles(result);
+    }
     setLoading(false);
   };
 
   useEffect(() => {
     fetchProfiles();
-  }, [currentUser, filters]);
+  }, [currentUser, filters, blocks, smartSort, myProfile]);
 
   const resetFilters = () => {
     setFilters({ gender: "", minAge: "", maxAge: "", city: "", religion: "" });
@@ -67,15 +110,26 @@ export default function Browse() {
             <h1 className="font-serif text-2xl font-bold text-foreground">Browse Profiles</h1>
             <p className="text-muted-foreground text-sm mt-1">{profiles.length} profiles found</p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowFilters(!showFilters)}
-            data-testid="button-toggle-filters"
-          >
-            <SlidersHorizontal className="h-4 w-4 mr-2" />
-            Filters
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={smartSort ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSmartSort(!smartSort)}
+              data-testid="button-smart-sort"
+            >
+              <Sparkles className="h-4 w-4 mr-1.5" />
+              Smart
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+              data-testid="button-toggle-filters"
+            >
+              <SlidersHorizontal className="h-4 w-4 mr-2" />
+              Filters
+            </Button>
+          </div>
         </div>
 
         {showFilters && (

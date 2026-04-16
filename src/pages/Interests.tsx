@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
+import { useBlockStore } from "@/stores/useBlockStore";
+import { useNotificationStore } from "@/stores/useNotificationStore";
 import type { Interest, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { UserAvatar } from "@/components/UserAvatar";
@@ -18,9 +20,15 @@ export default function Interests() {
   const [, setLocation] = useLocation();
   const { currentUser } = useAuth();
   const { toast } = useToast();
+  const { isBlockRelation, fetchBlocks } = useBlockStore();
+  const { createNotification } = useNotificationStore();
   const [received, setReceived] = useState<Interest[]>([]);
   const [sent, setSent] = useState<Interest[]>([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (currentUser) fetchBlocks(currentUser.id);
+  }, [currentUser]);
 
   const fetchInterests = async () => {
     if (!currentUser) return;
@@ -46,7 +54,7 @@ export default function Interests() {
     fetchInterests();
   }, [currentUser]);
 
-  const handleUpdateStatus = async (interestId: string, status: "accepted" | "rejected") => {
+  const handleUpdateStatus = async (interestId: string, status: "accepted" | "rejected", senderId: string) => {
     const { error } = await supabase
       .from("interests")
       .update({ status })
@@ -55,6 +63,10 @@ export default function Interests() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {
       toast({ title: status === "accepted" ? "Interest accepted!" : "Interest rejected" });
+      // Create notification for the sender
+      if (status === "accepted" && currentUser) {
+        await createNotification(senderId, 'interest_accepted', currentUser.id);
+      }
       fetchInterests();
     }
   };
@@ -80,6 +92,10 @@ export default function Interests() {
   const InterestCard = ({ interest, type }: { interest: Interest; type: "received" | "sent" }) => {
     const person = type === "received" ? interest.sender : interest.receiver;
     if (!person) return null;
+
+    // Filter out blocked users
+    if (isBlockRelation(person.id)) return null;
+
     return (
       <Card className="border-card-border shadow-sm" data-testid={`card-interest-${interest.id}`}>
         <CardContent className="pt-4">
@@ -112,7 +128,7 @@ export default function Interests() {
                 <div className="flex gap-2 mt-3">
                   <Button
                     size="sm"
-                    onClick={() => handleUpdateStatus(interest.id, "accepted")}
+                    onClick={() => handleUpdateStatus(interest.id, "accepted", interest.sender_id)}
                     data-testid={`button-accept-${interest.id}`}
                   >
                     <Check className="h-3.5 w-3.5 mr-1" />
@@ -121,7 +137,7 @@ export default function Interests() {
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => handleUpdateStatus(interest.id, "rejected")}
+                    onClick={() => handleUpdateStatus(interest.id, "rejected", interest.sender_id)}
                     data-testid={`button-reject-${interest.id}`}
                   >
                     <X className="h-3.5 w-3.5 mr-1" />

@@ -3,6 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Heart, Users, MessageCircle, UserCircle, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
@@ -65,10 +66,11 @@ export function Layout({ children }: LayoutProps) {
           {profile && (
             <div className="flex items-center gap-3 px-3 py-2 mb-2">
               <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground truncate">{profile.name}</p>
                 <p className="text-xs text-muted-foreground capitalize">{profile.role}</p>
               </div>
+              <NotificationBell />
             </div>
           )}
           <Button
@@ -90,13 +92,16 @@ export function Layout({ children }: LayoutProps) {
             <Heart className="h-5 w-5 text-primary fill-primary" />
             <span className="font-serif font-semibold text-base text-foreground">Vivah</span>
           </div>
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground"
-            data-testid="button-mobile-menu"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <button
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground"
+              data-testid="button-mobile-menu"
+            >
+              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+          </div>
         </div>
         {mobileOpen && (
           <div className="px-3 pb-3 space-y-1">

@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
-import type { Profile, Interest, Message } from "@/types";
+import type { Profile, Interest, Message, Report } from "@/types";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Users, Heart, MessageCircle, Ban, Trash2, CheckCircle } from "lucide-react";
+import { Shield, Users, Heart, MessageCircle, Ban, Trash2, CheckCircle, Flag, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 
@@ -18,18 +18,21 @@ export default function Admin() {
   const [users, setUsers] = useState<Profile[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchAll = async () => {
     setLoading(true);
-    const [{ data: u }, { data: i }, { data: m }] = await Promise.all([
+    const [{ data: u }, { data: i }, { data: m }, { data: r }] = await Promise.all([
       supabase.from("profiles").select("*").order("created_at", { ascending: false }),
       supabase.from("interests").select("*, sender:profiles!sender_id(name), receiver:profiles!receiver_id(name)").order("created_at", { ascending: false }),
       supabase.from("messages").select("*, sender:profiles!sender_id(name)").order("created_at", { ascending: false }).limit(100),
+      supabase.from("reports").select("*, reporter:profiles!reporter_id(name), reported_user:profiles!reported_user_id(name)").order("created_at", { ascending: false }),
     ]);
     setUsers((u as Profile[]) || []);
     setInterests((i as Interest[]) || []);
     setMessages((m as Message[]) || []);
+    setReports((r as Report[]) || []);
     setLoading(false);
   };
 
@@ -90,10 +93,21 @@ export default function Admin() {
     }
   };
 
+  const handleDeleteReport = async (id: string) => {
+    const { error } = await supabase.from("reports").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Report dismissed" });
+      fetchAll();
+    }
+  };
+
   const stats = [
     { label: "Total Users", value: users.length, icon: Users },
     { label: "Interests", value: interests.length, icon: Heart },
     { label: "Messages", value: messages.length, icon: MessageCircle },
+    { label: "Reports", value: reports.length, icon: Flag },
     { label: "Blocked Users", value: users.filter((u) => u.is_blocked).length, icon: Ban },
   ];
 
@@ -105,7 +119,7 @@ export default function Admin() {
           <p className="text-muted-foreground text-sm mt-1">Manage users and moderate the platform</p>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-8">
           {stats.map(({ label, value, icon: Icon }) => (
             <Card key={label} className="border-card-border">
               <CardContent className="pt-4">
@@ -126,6 +140,14 @@ export default function Admin() {
             <TabsTrigger value="users" data-testid="admin-tab-users">Users</TabsTrigger>
             <TabsTrigger value="interests" data-testid="admin-tab-interests">Interests</TabsTrigger>
             <TabsTrigger value="messages" data-testid="admin-tab-messages">Messages</TabsTrigger>
+            <TabsTrigger value="reports" data-testid="admin-tab-reports">
+              Reports
+              {reports.length > 0 && (
+                <span className="ml-2 bg-destructive text-destructive-foreground text-xs rounded-full px-1.5 py-0.5">
+                  {reports.length}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users">
@@ -291,6 +313,84 @@ export default function Admin() {
                                 <Trash2 className="h-3 w-3 mr-1" />
                                 Delete
                               </Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="reports">
+            <Card className="border-card-border">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  User Reports ({reports.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}</div>
+                ) : reports.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Flag className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">No reports yet</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-border text-left">
+                          <th className="pb-2 font-medium text-muted-foreground">Reporter</th>
+                          <th className="pb-2 font-medium text-muted-foreground">Reported User</th>
+                          <th className="pb-2 font-medium text-muted-foreground">Reason</th>
+                          <th className="pb-2 font-medium text-muted-foreground">Date</th>
+                          <th className="pb-2 font-medium text-muted-foreground">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border">
+                        {reports.map((r) => (
+                          <tr key={r.id} data-testid={`row-report-${r.id}`}>
+                            <td className="py-2.5 font-medium whitespace-nowrap">
+                              {(r.reporter as unknown as { name: string })?.name || "—"}
+                            </td>
+                            <td className="py-2.5 font-medium whitespace-nowrap">
+                              {(r.reported_user as unknown as { name: string })?.name || "—"}
+                            </td>
+                            <td className="py-2.5 text-muted-foreground max-w-xs truncate">{r.reason}</td>
+                            <td className="py-2.5 text-muted-foreground text-xs whitespace-nowrap">
+                              {formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}
+                            </td>
+                            <td className="py-2.5">
+                              <div className="flex gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs"
+                                  onClick={() => {
+                                    const user = users.find(u => u.id === r.reported_user_id);
+                                    if (user) handleBlockUser(user.id, user.is_blocked);
+                                  }}
+                                  data-testid={`button-block-reported-${r.id}`}
+                                >
+                                  <Ban className="h-3 w-3 mr-1" />
+                                  Block User
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs text-muted-foreground"
+                                  onClick={() => handleDeleteReport(r.id)}
+                                  data-testid={`button-dismiss-report-${r.id}`}
+                                >
+                                  <Trash2 className="h-3 w-3 mr-1" />
+                                  Dismiss
+                                </Button>
+                              </div>
                             </td>
                           </tr>
                         ))}
