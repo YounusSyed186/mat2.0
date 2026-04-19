@@ -22,7 +22,7 @@ export default function Chat() {
   const { currentUser, profile: myProfile } = useAuth();
   const { toast } = useToast();
   const { isBlockRelation, fetchBlocks } = useBlockStore();
-  const { joinChat, leaveChat, sendMessage, setActiveChatUser } = useChatStore();
+  const { setActiveChatUser } = useChatStore();
   const { createNotification } = useNotificationStore();
 
   const [otherProfile, setOtherProfile] = useState<Profile | null>(null);
