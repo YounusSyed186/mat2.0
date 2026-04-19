@@ -8,7 +8,7 @@ export interface Profile {
   education: string;
   profession: string;
   bio: string;
-  role: 'user' | 'admin';
+  role: 'user' | 'admin' | 'primary_admin';
   is_blocked: boolean;
   avatar_url?: string | null;
   created_at: string;
@@ -61,4 +61,29 @@ export interface Notification {
   is_read: boolean;
   created_at: string;
   metadata?: string | null;
+}
+
+export interface SubscriptionPlan {
+  id: string;
+  name: string;
+  description: string;
+  price_monthly: number;
+  price_quarterly: number;
+  price_yearly: number;
+  interest_limit: number;
+  features: string[];
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface UserSubscription {
+  id: string;
+  user_id: string;
+  plan_id: string;
+  billing_cycle: 'monthly' | 'quarterly' | 'yearly';
+  status: 'active' | 'cancelled' | 'expired';
+  start_date: string;
+  end_date: string;
+  created_at: string;
+  plan?: SubscriptionPlan;
 }

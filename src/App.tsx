@@ -1,6 +1,7 @@
 import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 import Login from "@/pages/Login";
@@ -11,6 +12,7 @@ import UserProfile from "@/pages/UserProfile";
 import Interests from "@/pages/Interests";
 import ChatList from "@/pages/ChatList";
 import Chat from "@/pages/Chat";
+import Subscription from "@/pages/Subscription";
 import Admin from "@/pages/Admin";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -95,6 +97,9 @@ function Router() {
       <Route path="/chat/:userId">
         <ProtectedRoute component={Chat} />
       </Route>
+      <Route path="/subscriptions">
+        <ProtectedRoute component={Subscription} />
+      </Route>
       <Route path="/admin">
         <ProtectedRoute component={Admin} />
       </Route>
@@ -112,6 +117,7 @@ function App() {
             <Router />
           </WouterRouter>
           <Toaster />
+          <SonnerToaster position="top-right" richColors />
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

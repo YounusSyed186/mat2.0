@@ -4,7 +4,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { NotificationBell } from "@/components/NotificationBell";
-import { Heart, Users, MessageCircle, UserCircle, LayoutDashboard, LogOut, Menu, X } from "lucide-react";
+import { ModeToggle } from "@/components/ModeToggle";
+import { Heart, Users, MessageCircle, UserCircle, LayoutDashboard, LogOut, Menu, X, Star } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,20 +28,21 @@ export function Layout({ children }: LayoutProps) {
     { href: "/browse", label: "Browse", icon: Users },
     { href: "/interests", label: "Interests", icon: Heart },
     { href: "/chat", label: "Messages", icon: MessageCircle },
+    { href: "/subscriptions", label: "Premium", icon: Star },
     { href: "/profile/edit", label: "My Profile", icon: UserCircle },
   ];
 
-  if (profile?.role === "admin") {
+  if (profile?.role === "admin" || profile?.role === "primary_admin") {
     navItems.push({ href: "/admin", label: "Admin", icon: LayoutDashboard });
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-background selection:bg-primary/20">
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex flex-col w-60 bg-sidebar border-r border-sidebar-border fixed inset-y-0 left-0 z-30">
-        <div className="flex items-center gap-2 px-6 py-5 border-b border-sidebar-border">
-          <Heart className="h-6 w-6 text-primary fill-primary" />
-          <span className="font-serif font-semibold text-lg text-foreground">Vivah</span>
+      <aside className="hidden md:flex flex-col w-60 bg-sidebar/80 backdrop-blur-2xl border-r border-sidebar-border/50 fixed inset-y-0 left-0 z-30 shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)]">
+        <div className="flex items-center gap-2 px-6 py-5 border-b border-sidebar-border/50">
+          <Heart className="h-6 w-6 text-primary fill-primary drop-shadow-sm" />
+          <span className="font-serif font-semibold text-lg text-foreground tracking-tight">Vivah</span>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map(({ href, label, icon: Icon }) => {
@@ -62,14 +64,15 @@ export function Layout({ children }: LayoutProps) {
             );
           })}
         </nav>
-        <div className="px-3 py-4 border-t border-sidebar-border">
+        <div className="px-3 py-4 border-t border-sidebar-border/50">
           {profile && (
-            <div className="flex items-center gap-3 px-3 py-2 mb-2">
+            <div className="flex items-center gap-3 px-3 py-2 mb-2 bg-background/50 rounded-lg border border-border/50">
               <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} size="sm" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-foreground truncate">{profile.name}</p>
                 <p className="text-xs text-muted-foreground capitalize">{profile.role}</p>
               </div>
+              <ModeToggle />
               <NotificationBell />
             </div>
           )}
@@ -86,13 +89,14 @@ export function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Mobile top bar */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar border-b border-sidebar-border">
+      <div className="md:hidden fixed top-0 left-0 right-0 z-40 bg-sidebar/80 backdrop-blur-2xl border-b border-sidebar-border/50 shadow-sm">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-2">
-            <Heart className="h-5 w-5 text-primary fill-primary" />
+            <Heart className="h-5 w-5 text-primary fill-primary drop-shadow-sm" />
             <span className="font-serif font-semibold text-base text-foreground">Vivah</span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <ModeToggle />
             <NotificationBell />
             <button
               onClick={() => setMobileOpen(!mobileOpen)}

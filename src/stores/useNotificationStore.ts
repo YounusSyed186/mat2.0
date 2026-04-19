@@ -116,6 +116,20 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
         (payload) => {
           const newNotif = payload.new as Notification;
           get().addNotification(newNotif);
+          
+          // Show toast pop for new notification
+          import('sonner').then(({ toast }) => {
+            let title = 'New Notification';
+            const name = newNotif.metadata || 'Someone';
+            if (newNotif.type === 'interest_received') title = `${name} sent you an interest!`;
+            if (newNotif.type === 'interest_accepted') title = `${name} accepted your interest!`;
+            if (newNotif.type === 'message') title = `New message from ${name}`;
+            
+            toast.success(title, {
+              description: 'Check your notifications.',
+              duration: 4000,
+            });
+          });
         }
       )
       .subscribe();

@@ -47,6 +47,12 @@ export default function Browse() {
       .eq("is_blocked", false)
       .order("created_at", { ascending: false });
 
+    if (myProfile?.gender === 'male') {
+      query = query.eq('gender', 'female');
+    } else if (myProfile?.gender === 'female') {
+      query = query.eq('gender', 'male');
+    }
+
     if (filters.gender) query = query.eq("gender", filters.gender);
     if (filters.minAge) query = query.gte("age", parseInt(filters.minAge));
     if (filters.maxAge) query = query.lte("age", parseInt(filters.maxAge));

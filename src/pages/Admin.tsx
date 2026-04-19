@@ -11,6 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Shield, Users, Heart, MessageCircle, Ban, Trash2, CheckCircle, Flag, AlertTriangle, ArrowRight, ShieldOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
+import { AdminSubscriptions } from "@/components/AdminSubscriptions";
+import { AdminSubscribers } from "@/components/AdminSubscribers";
 
 export default function Admin() {
   const { profile } = useAuth();
@@ -43,7 +45,7 @@ export default function Admin() {
     fetchAll();
   }, []);
 
-  if (profile?.role !== "admin") {
+  if (profile?.role !== "admin" && profile?.role !== "primary_admin") {
     return (
       <Layout>
         <div className="flex flex-col items-center justify-center py-20 text-center px-4">
@@ -54,6 +56,21 @@ export default function Admin() {
       </Layout>
     );
   }
+
+  const handleToggleAdmin = async (userId: string, currentRole: string) => {
+    if (profile?.role !== "primary_admin") {
+      toast({ title: "Error", description: "Only the primary admin can change roles.", variant: "destructive" });
+      return;
+    }
+    const newRole = currentRole === "admin" ? "user" : "admin";
+    const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: newRole === "admin" ? "User promoted to admin" : "Admin demoted to regular user" });
+      fetchAll();
+    }
+  };
 
   const handleBlockUser = async (userId: string, blocked: boolean) => {
     const { error } = await supabase.from("profiles").update({ is_blocked: !blocked }).eq("id", userId);
@@ -169,6 +186,12 @@ export default function Admin() {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="subscriptions" data-testid="admin-tab-subscriptions">
+              Plans
+            </TabsTrigger>
+            <TabsTrigger value="subscribers" data-testid="admin-tab-subscribers">
+              Subscribers
+            </TabsTrigger>
           </TabsList>
 
           {/* ====== USERS TAB ====== */}
@@ -200,7 +223,9 @@ export default function Admin() {
                             <td className="py-2.5 text-muted-foreground">{u.age}</td>
                             <td className="py-2.5 text-muted-foreground">{u.city}</td>
                             <td className="py-2.5">
-                              <Badge variant={u.role === "admin" ? "default" : "secondary"} className="text-xs">{u.role}</Badge>
+                              <Badge variant={u.role === "primary_admin" ? "destructive" : u.role === "admin" ? "default" : "secondary"} className="text-xs capitalize">
+                                {u.role.replace('_', ' ')}
+                              </Badge>
                             </td>
                             <td className="py-2.5">
                               {u.is_blocked ? (
@@ -230,6 +255,17 @@ export default function Admin() {
                                   <Trash2 className="h-3 w-3 mr-1" />
                                   Delete
                                 </Button>
+                                {profile?.role === "primary_admin" && u.role !== "primary_admin" && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-xs border-primary text-primary hover:bg-primary/10"
+                                    onClick={() => handleToggleAdmin(u.id, u.role)}
+                                  >
+                                    <Shield className="h-3 w-3 mr-1" />
+                                    {u.role === "admin" ? "Remove Admin" : "Make Admin"}
+                                  </Button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -508,6 +544,16 @@ export default function Admin() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* ====== SUBSCRIPTIONS (PLANS) TAB ====== */}
+          <TabsContent value="subscriptions">
+            <AdminSubscriptions />
+          </TabsContent>
+
+          {/* ====== SUBSCRIBERS TAB ====== */}
+          <TabsContent value="subscribers">
+            <AdminSubscribers />
           </TabsContent>
         </Tabs>
       </div>
