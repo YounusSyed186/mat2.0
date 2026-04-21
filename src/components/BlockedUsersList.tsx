@@ -29,6 +29,7 @@ export function BlockedUsersList() {
   const [loading, setLoading] = useState(true);
   const [unblockTarget, setUnblockTarget] = useState<BlockedUser | null>(null);
   const [unblocking, setUnblocking] = useState(false);
+  // inside your component file (only showing modified parts)
 
   useEffect(() => {
     if (!currentUser) return;
@@ -39,6 +40,7 @@ export function BlockedUsersList() {
     if (!currentUser) return;
 
     const myBlocks = blocks.filter(b => b.blocker_id === currentUser.id);
+
     if (myBlocks.length === 0) {
       setBlockedUsers([]);
       setLoading(false);
@@ -47,36 +49,76 @@ export function BlockedUsersList() {
 
     const fetchProfiles = async () => {
       setLoading(true);
-      const blockedIds = myBlocks.map(b => b.blocked_id);
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .in('id', blockedIds);
 
-      if (data) {
-        const users: BlockedUser[] = myBlocks.map(b => ({
-          blockId: b.id,
-          profile: (data as Profile[]).find(p => p.id === b.blocked_id)!,
-          blockedAt: b.created_at,
-        })).filter(u => u.profile);
-        setBlockedUsers(users);
+      try {
+        const blockedIds = myBlocks.map(b => b.blocked_id);
+
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("*")
+          .in("id", blockedIds);
+
+        if (error) {
+          console.error("Failed to fetch blocked profiles:", error);
+          setBlockedUsers([]);
+          return;
+        }
+
+        if (data) {
+          const users: BlockedUser[] = myBlocks
+            .map(b => {
+              const profile = (data as Profile[]).find(p => p.id === b.blocked_id);
+              if (!profile) return null;
+
+              return {
+                blockId: b.id,
+                profile,
+                blockedAt: b.created_at,
+              };
+            })
+            .filter(Boolean) as BlockedUser[];
+
+          setBlockedUsers(users);
+        }
+      } catch (err) {
+        console.error("Unexpected error fetching blocked users:", err);
+        setBlockedUsers([]);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
+
     fetchProfiles();
   }, [blocks, currentUser]);
 
+  // ✅ Improved unblock handler
   const handleUnblock = async () => {
     if (!unblockTarget || !currentUser) return;
+
     setUnblocking(true);
-    const success = await unblockUser(currentUser.id, unblockTarget.profile.id);
-    if (success) {
-      toast({ title: 'User unblocked', description: `${unblockTarget.profile.name} has been unblocked.` });
-    } else {
-      toast({ title: 'Failed to unblock user', variant: 'destructive' });
+
+    try {
+      const success = await unblockUser(currentUser.id, unblockTarget.profile.id);
+
+      if (success) {
+        toast({
+          title: "User unblocked",
+          description: `${unblockTarget.profile.name} has been unblocked.`,
+        });
+      } else {
+        throw new Error("Unblock failed");
+      }
+    } catch (err) {
+      console.error("Unblock error:", err);
+      toast({
+        title: "Failed to unblock user",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setUnblocking(false);
+      setUnblockTarget(null);
     }
-    setUnblocking(false);
-    setUnblockTarget(null);
   };
 
   return (

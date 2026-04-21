@@ -11,6 +11,39 @@ export interface Profile {
   role: 'user' | 'admin' | 'primary_admin';
   is_blocked: boolean;
   avatar_url?: string | null;
+  
+  // Identity & Background
+  languages: string[];
+  ethnicity?: string;
+  willing_to_relocate: boolean;
+  
+  // Personality & Lifestyle
+  introvert_extrovert?: number;
+  hobbies: string[];
+  habits?: string;
+  social_preferences?: string;
+  
+  // Values & Preferences
+  career_ambition?: string;
+  family_goals?: string;
+  lifestyle_choices?: string;
+  
+  // Physical Attributes
+  height?: number;
+  fitness_level?: string;
+  style?: string;
+  skin_tone?: string;
+  
+  // Intent & Goals
+  search_intent?: string;
+  
+  // Media & Expression
+  prompts: Record<string, string>;
+  voice_url?: string;
+  video_url?: string;
+  
+  weight?: number;
+
   created_at: string;
   updated_at?: string;
 }

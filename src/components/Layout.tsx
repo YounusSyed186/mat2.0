@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ModeToggle } from "@/components/ModeToggle";
-import { Heart, Users, MessageCircle, UserCircle, LayoutDashboard, LogOut, Menu, X, Star } from "lucide-react";
+import { Heart, Users, MessageCircle, UserCircle, LayoutDashboard, LogOut, Menu, X, Star, Sparkles, TrendingUp, Lock } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useAiAccess } from "@/hooks/useAiAccess";
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ export function Layout({ children }: LayoutProps) {
   const [location] = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { toast } = useToast();
+  const { hasAccess: hasAiAccess } = useAiAccess();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -25,15 +27,17 @@ export function Layout({ children }: LayoutProps) {
   };
 
   const navItems = [
-    { href: "/browse", label: "Browse", icon: Users },
-    { href: "/interests", label: "Interests", icon: Heart },
-    { href: "/chat", label: "Messages", icon: MessageCircle },
-    { href: "/subscriptions", label: "Premium", icon: Star },
-    { href: "/profile/edit", label: "My Profile", icon: UserCircle },
+    { href: "/browse", label: "Browse", icon: Users, aiGated: false },
+    { href: "/interests", label: "Interests", icon: Heart, aiGated: false },
+    { href: "/chat", label: "Messages", icon: MessageCircle, aiGated: false },
+    { href: "/ai-match", label: "AI Match", icon: Sparkles, aiGated: true },
+    { href: "/profile-optimizer", label: "AI Optimizer", icon: TrendingUp, aiGated: true },
+    { href: "/subscriptions", label: "Premium", icon: Star, aiGated: false },
+    { href: "/profile/edit", label: "My Profile", icon: UserCircle, aiGated: false },
   ];
 
   if (profile?.role === "admin" || profile?.role === "primary_admin") {
-    navItems.push({ href: "/admin", label: "Admin", icon: LayoutDashboard });
+    navItems.push({ href: "/admin", label: "Admin", icon: LayoutDashboard, aiGated: false });
   }
 
   return (
@@ -45,8 +49,9 @@ export function Layout({ children }: LayoutProps) {
           <span className="font-serif font-semibold text-lg text-foreground tracking-tight">Vivah</span>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
+          {navItems.map(({ href, label, icon: Icon, aiGated }) => {
             const isActive = location === href || location.startsWith(href + "/");
+            const isLocked = aiGated && !hasAiAccess;
             return (
               <Link
                 key={href}
@@ -54,12 +59,20 @@ export function Layout({ children }: LayoutProps) {
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors ${
                   isActive
                     ? "bg-primary text-primary-foreground"
+                    : isLocked
+                    ? "text-muted-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 }`}
-                data-testid={`nav-${label.toLowerCase()}`}
+                data-testid={`nav-${label.toLowerCase().replace(" ", "-")}`}
               >
                 <Icon className="h-4 w-4" />
-                {label}
+                <span className="flex-1">{label}</span>
+                {isLocked && (
+                  <span className="flex items-center gap-0.5 text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+                    <Lock className="h-2.5 w-2.5" />
+                    Gold
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -109,8 +122,9 @@ export function Layout({ children }: LayoutProps) {
         </div>
         {mobileOpen && (
           <div className="px-3 pb-3 space-y-1">
-            {navItems.map(({ href, label, icon: Icon }) => {
+            {navItems.map(({ href, label, icon: Icon, aiGated }) => {
               const isActive = location === href;
+              const isLocked = aiGated && !hasAiAccess;
               return (
                 <Link
                   key={href}
@@ -118,12 +132,20 @@ export function Layout({ children }: LayoutProps) {
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium ${
                     isActive
                       ? "bg-primary text-primary-foreground"
+                      : isLocked
+                      ? "text-muted-foreground/60 hover:bg-sidebar-accent"
                       : "text-sidebar-foreground hover:bg-sidebar-accent"
                   }`}
                   onClick={() => setMobileOpen(false)}
                 >
                   <Icon className="h-4 w-4" />
-                  {label}
+                  <span className="flex-1">{label}</span>
+                  {isLocked && (
+                    <span className="flex items-center gap-0.5 text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-full">
+                      <Lock className="h-2.5 w-2.5" />
+                      Gold
+                    </span>
+                  )}
                 </Link>
               );
             })}

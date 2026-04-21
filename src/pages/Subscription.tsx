@@ -10,9 +10,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Check, Crown, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { generateEmbedding } from "@/lib/ai";
 
 export default function Subscription() {
-  const { currentUser } = useAuth();
+  const { currentUser, profile } = useAuth();
   const { toast } = useToast();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [activeSub, setActiveSub] = useState<UserSubscription | null>(null);
@@ -23,14 +24,14 @@ export default function Subscription() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      
+
       // Fetch active plans
       const { data: plansData } = await supabase
         .from("subscription_plans")
         .select("*")
         .eq("is_active", true)
         .order("price_monthly", { ascending: true });
-        
+
       if (plansData) setPlans(plansData as SubscriptionPlan[]);
 
       // Fetch user active subscription
@@ -43,11 +44,11 @@ export default function Subscription() {
           .gte("end_date", new Date().toISOString())
           .order("created_at", { ascending: false })
           .limit(1)
-          .single();
-          
+          .maybeSingle();
+
         if (subData) setActiveSub(subData as UserSubscription);
       }
-      
+
       setLoading(false);
     };
 
@@ -61,7 +62,7 @@ export default function Subscription() {
     try {
       // In a real app, you would redirect to Stripe/Payment gateway here.
       // For demonstration, we'll directly create the subscription.
-      
+
       // Calculate end date based on billing cycle
       const startDate = new Date();
       const endDate = new Date();
@@ -88,14 +89,34 @@ export default function Subscription() {
           end_date: endDate.toISOString(),
         })
         .select("*, plan:subscription_plans(*)")
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
 
       setActiveSub(data as UserSubscription);
+
+      // Auto-generate embedding if this is a Gold or Diamond plan
+      const AI_ELIGIBLE_PLANS = ["Gold", "Diamond"];
+      if (AI_ELIGIBLE_PLANS.includes(plan.name) && profile) {
+        try {
+          const profileText = `${profile.name} ${profile.age} ${profile.gender} ${profile.religion} ${profile.city} ${profile.profession} ${profile.bio}`;
+          const embedding = await generateEmbedding(profileText);
+          if (embedding) {
+            await supabase
+              .from("profiles")
+              .update({ embedding: `[${embedding.join(",")}]` })
+              .eq("id", currentUser.id);
+          }
+        } catch (embErr) {
+          console.error("Embedding generation failed after subscription:", embErr);
+          // Non-blocking — profile is still subscribed
+        }
+      }
+
       toast({
         title: "Subscription Successful!",
-        description: `You are now subscribed to the ${plan.name} plan.`,
+        description: `You are now subscribed to the ${plan.name} plan.${["Gold", "Diamond"].includes(plan.name) ? " AI features are now unlocked!" : ""
+          }`,
       });
     } catch (err: any) {
       toast({
@@ -206,13 +227,12 @@ export default function Subscription() {
               const isCurrentPlan = activeSub?.plan_id === plan.id;
 
               return (
-                <Card 
-                  key={plan.id} 
-                  className={`relative flex flex-col ${
-                    isPopular 
-                      ? 'border-primary shadow-lg scale-105 z-10' 
+                <Card
+                  key={plan.id}
+                  className={`relative flex flex-col ${isPopular
+                      ? 'border-primary shadow-lg scale-105 z-10'
                       : 'border-border'
-                  }`}
+                    }`}
                 >
                   {isPopular && (
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -250,7 +270,7 @@ export default function Subscription() {
                           {plan.interest_limit} interests per month
                         </span>
                       </div>
-                      
+
                       {plan.features?.map((feature: string, i: number) => (
                         <div key={i} className="flex items-center gap-3">
                           <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
@@ -262,16 +282,16 @@ export default function Subscription() {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button 
-                      className="w-full" 
+                    <Button
+                      className="w-full"
                       variant={isPopular ? "default" : "outline"}
                       disabled={isCurrentPlan || isProcessing === plan.id}
                       onClick={() => handleSubscribe(plan)}
                     >
-                      {isProcessing === plan.id 
-                        ? "Processing..." 
-                        : isCurrentPlan 
-                          ? "Current Plan" 
+                      {isProcessing === plan.id
+                        ? "Processing..."
+                        : isCurrentPlan
+                          ? "Current Plan"
                           : "Subscribe Now"
                       }
                     </Button>

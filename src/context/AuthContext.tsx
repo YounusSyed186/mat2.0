@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType>({
   currentUser: null,
   profile: null,
   loading: true,
-  refetchProfile: async () => {},
+  refetchProfile: async () => { },
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -34,7 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .select('*')
         .eq('id', userId)
-        .single();
+        .maybeSingle();
 
       if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);

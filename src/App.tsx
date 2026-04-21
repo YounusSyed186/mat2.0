@@ -14,6 +14,8 @@ import ChatList from "@/pages/ChatList";
 import Chat from "@/pages/Chat";
 import Subscription from "@/pages/Subscription";
 import Admin from "@/pages/Admin";
+import AiMatch from "@/pages/AiMatch";
+import ProfileOptimizer from "@/pages/ProfileOptimizer";
 import NotFound from "@/pages/not-found";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -102,6 +104,12 @@ function Router() {
       </Route>
       <Route path="/admin">
         <ProtectedRoute component={Admin} />
+      </Route>
+      <Route path="/ai-match">
+        <ProtectedRoute component={AiMatch} />
+      </Route>
+      <Route path="/profile-optimizer">
+        <ProtectedRoute component={ProfileOptimizer} />
       </Route>
       <Route component={NotFound} />
     </Switch>

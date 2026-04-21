@@ -145,7 +145,7 @@ export default function Chat() {
       .from("messages")
       .insert({ sender_id: currentUser.id, receiver_id: otherUserId, content })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       toast({ title: "Failed to send", description: error.message, variant: "destructive" });
@@ -231,11 +231,10 @@ export default function Chat() {
           )}
           {canChat && !isUserBlocked && (
             <div
-              className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${
-                connected
+              className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-full ${connected
                   ? "bg-green-100 text-green-700"
                   : "bg-muted text-muted-foreground"
-              }`}
+                }`}
               data-testid="status-connection"
             >
               <Wifi className="h-3 w-3" />
@@ -319,17 +318,15 @@ export default function Chat() {
                               />
                             )}
                             <div
-                              className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm ${
-                                isMe
+                              className={`max-w-[70%] rounded-2xl px-4 py-2.5 text-sm ${isMe
                                   ? "bg-primary text-primary-foreground rounded-br-sm"
                                   : "bg-card border border-border rounded-bl-sm shadow-sm"
-                              }`}
+                                }`}
                             >
                               <p className="leading-relaxed">{msg.content}</p>
                               <p
-                                className={`text-[10px] mt-1 ${
-                                  isMe ? "text-primary-foreground/60" : "text-muted-foreground"
-                                }`}
+                                className={`text-[10px] mt-1 ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"
+                                  }`}
                               >
                                 {format(new Date(msg.created_at), "h:mm a")}
                               </p>

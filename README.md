@@ -1,73 +1,54 @@
-# React + TypeScript + Vite
+# Vivah AI: Premium Matrimonial Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Vivah is a modern, AI-powered matrimonial platform designed to find meaningful life partners through semantic intelligence and personality-driven matchmaking.
 
-Currently, two official plugins are available:
+## ✨ Key Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Hybrid AI Matchmaking**: Uses a combination of strict SQL filters and semantic vector embeddings (`pgvector`) to find matches that truly align with your values and lifestyle.
+- **AI Profile Optimizer**: Analyzes your profile and suggests improvements for your bio, profession, hobbies, and personality prompts to boost your match rate.
+- **Rich User Profiles**: 20+ rich attributes including lifestyle choices, career ambition, family goals, and personality prompts.
+- **State-of-the-Art Search**: Search using natural language like *"Someone similar to me who is Muslim and can be a stay at home mom who can cook"*.
+- **Premium Subscriptions**: Multi-tier monetization (Gold/Diamond) gating advanced AI features.
+- **Real-time Interaction**: Instant messaging and interest management.
 
-## React Compiler
+## 🛠 Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Frontend**: Vite + React + TypeScript + TailwindCSS + Shadcn UI
+- **Backend**: Supabase (PostgreSQL, Auth, Storage, Edge Functions)
+- **AI Models**:
+  - **Gemini (text-embedding-004)**: For high-dimensional vector embeddings.
+  - **Llama 3.1 (via Groq)**: For real-time profile analysis and match explanations.
+- **Database Architecture**: 
+  - `pgvector` for similarity search.
+  - HNSW Index for high-performance vector retrieval.
+  - PostgreSQL Triggers for automated data synchronization.
 
-## Expanding the ESLint configuration
+## 🚀 Getting Started
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 1. Database Setup
+Execute the [supabase-setup.sql](file:///home/younussyed/Projects/mat2.0/supabase-setup.sql) script in your Supabase SQL Editor. This will set up all tables, RLS policies, indexes, and AI functions.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 2. Environment Variables
+Create a `.env` file in the root directory:
+```env
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_key
+VITE_GEMINI_API_KEY=your_google_ai_key
+VITE_GROQ_API_KEY=your_groq_key
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 3. Installation
+```bash
+pnpm install
+pnpm dev
 ```
+
+## 📖 Documentation
+- [Architecture & AI Deep Dive](file:///home/younussyed/Projects/mat2.0/ARCHITECTURE.md)
+- [Database Schema (Unified)](file:///home/younussyed/Projects/mat2.0/supabase-setup.sql)
+
+## 🤝 Contributing
+Contributions are welcome! Please follow the existing design system and ensure all AI features are properly gated behind subscription checks.
+
+---
+Built with ❤️ for meaningful connections.
