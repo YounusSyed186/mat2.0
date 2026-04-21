@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layout } from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, Loader2, Sparkles } from "lucide-react";
 import { generateEmbedding } from "@/lib/ai";
 
 interface ProfilePageProps {
@@ -55,8 +55,8 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
     style: "",
     skin_tone: "",
     search_intent: "",
-    intent_duration: "",
-    prompts: [] as { question: string; answer: string }[],
+    weight: "",
+    prompts: {} as Record<string, string>,
     voice_url: "",
     video_url: "",
   });
@@ -88,8 +88,8 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
         style: profile.style || "",
         skin_tone: profile.skin_tone || "",
         search_intent: profile.search_intent || "",
-        intent_duration: profile.intent_duration || "",
-        prompts: profile.prompts || [],
+        weight: profile.weight?.toString() || "",
+        prompts: profile.prompts || {},
         voice_url: profile.voice_url || "",
         video_url: profile.video_url || "",
       });
@@ -184,7 +184,8 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
       style: form.style,
       skin_tone: form.skin_tone,
       search_intent: form.search_intent,
-      intent_duration: form.intent_duration,
+      weight: form.weight ? parseInt(form.weight) : null,
+      prompts: form.prompts,
       voice_url: form.voice_url,
       video_url: form.video_url,
       role: profile?.role || "user",
@@ -454,11 +455,11 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Height (cm)</Label>
-                  <Input type="number" value={form.height || ""} onChange={(e) => setForm({ ...form, height: parseInt(e.target.value) || 0 })} placeholder="e.g. 175" />
+                  <Input type="number" value={form.height} onChange={(e) => setForm({ ...form, height: e.target.value })} placeholder="e.g. 175" />
                 </div>
                 <div className="space-y-2">
                   <Label>Weight (kg)</Label>
-                  <Input type="number" value={form.weight || ""} onChange={(e) => setForm({ ...form, weight: parseInt(e.target.value) || 0 })} placeholder="e.g. 70" />
+                  <Input type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder="e.g. 70" />
                 </div>
               </div>
               <div className="space-y-2">
@@ -517,10 +518,10 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
                 <div key={q} className="space-y-2">
                   <Label className="text-primary font-medium">{q}</Label>
                   <Textarea 
-                    value={form.prompts?.[q] || ""} 
+                    value={(form.prompts as Record<string, string>)[q] || ""} 
                     onChange={(e) => setForm({ 
                       ...form, 
-                      prompts: { ...form.prompts, [q]: e.target.value } 
+                      prompts: { ...(form.prompts as Record<string, string>), [q]: e.target.value } 
                     })} 
                     placeholder="Your answer..."
                     className="resize-none min-h-[100px]"
@@ -532,7 +533,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
         </Card>
 
         <div className="flex justify-center pt-4">
-          <Button type="submit" disabled={loading || uploadingPhoto} size="xl" className="min-w-[240px] text-lg h-14">
+          <Button type="submit" disabled={loading || uploadingPhoto} size="lg" className="min-w-[240px] text-lg h-14">
             {loading ? (
               <><Loader2 className="h-6 w-6 mr-3 animate-spin" />{mode === "create" ? "Creating Profile..." : "Saving Changes..."}</>
             ) : (

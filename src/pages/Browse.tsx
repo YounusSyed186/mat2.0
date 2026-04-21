@@ -20,7 +20,7 @@ const RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "
 const PAGE_SIZE = 12;
 
 export default function Browse() {
-  const [, setLocation] = useLocation();
+  const [] = useLocation();
   const { currentUser, profile: myProfile } = useAuth();
   const { blocks, fetchBlocks } = useBlockStore();
   

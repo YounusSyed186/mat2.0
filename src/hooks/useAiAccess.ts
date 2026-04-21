@@ -22,7 +22,7 @@ export function useAiAccess() {
         const { data, error } = await supabase
           .from("user_subscriptions")
           .select("*, plan:subscription_plans(name)")
-          .eq("user_id", currentUser.id)
+          .eq("user_id", currentUser?.id)
           .eq("status", "active")
           .gte("end_date", new Date().toISOString())
           .order("created_at", { ascending: false })

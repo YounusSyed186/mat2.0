@@ -17,9 +17,9 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { 
-  MapPin, GraduationCap, Briefcase, BookOpen, Heart, MessageCircle, 
+  MapPin, Briefcase, BookOpen, Heart, MessageCircle, 
   ArrowLeft, CheckCircle, Clock, Ban, Flag, ShieldAlert, Sparkles,
-  Globe, Users, Calendar, Coffee, Dumbbell, Palette, Rocket, Home,
+  Globe, Users, Calendar, Dumbbell, Palette, Rocket, Home,
   Wine, Search, Smile, Quote
 } from "lucide-react";
 import { toast } from "sonner";
@@ -40,7 +40,7 @@ export default function UserProfile() {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [unblockDialogOpen, setUnblockDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [blocking, setBlocking] = useState(false);
+  const [, setBlocking] = useState(false);
 
   useEffect(() => {
     if (!userId || !currentUser) return;
@@ -96,7 +96,7 @@ export default function UserProfile() {
   const handleBlock = async () => {
     if (!currentUser || !userId) return;
     setBlocking(true);
-    const success = await blockUser(currentUser.id, userId);
+    const success = await blockUser(currentUser?.id, userId);
     if (success) {
       toast.success(`${profile?.name} has been blocked.`);
     } else {
@@ -109,7 +109,7 @@ export default function UserProfile() {
   const handleUnblock = async () => {
     if (!currentUser || !userId) return;
     setBlocking(true);
-    const success = await unblockUser(currentUser.id, userId);
+    const success = await unblockUser(currentUser?.id, userId);
     if (success) {
       toast.success(`${profile?.name} has been unblocked.`);
     } else {
@@ -249,11 +249,11 @@ export default function UserProfile() {
             <Card className="border-card-border overflow-hidden shadow-lg">
               <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center relative">
                 <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} className="w-48 h-48 border-8 border-background shadow-xl" />
-                {profile.is_verified && (
+                {/* {profile.is_verified && (
                   <div className="absolute bottom-6 right-6 bg-primary text-primary-foreground p-1.5 rounded-full shadow-lg">
                     <CheckCircle className="h-5 w-5" />
                   </div>
-                )}
+                )} */}
               </div>
               <CardContent className="pt-6 text-center">
                 <h1 className="text-3xl font-serif font-bold">{profile.name}, {profile.age}</h1>

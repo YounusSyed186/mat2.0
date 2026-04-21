@@ -148,7 +148,7 @@ export default function AiMatch() {
               Unlock the power of AI to find matches using natural language. Exclusive to <strong>Gold</strong> and <strong>Diamond</strong> members.
             </p>
           </div>
-          <Button asChild size="xl" className="gap-2 h-14 px-8 text-lg">
+          <Button asChild size="lg" className="gap-2 h-14 px-8 text-lg">
             <Link href="/subscriptions">
               <Crown className="h-5 w-5" />
               Upgrade to Premium

@@ -23,7 +23,9 @@ interface OptimizationResult {
   improved_profession: string;
   improved_hobbies: string[];
   improved_habits: string;
+  improved_prompts: Record<string, string>;
   match_boost_estimate: string;
+  tips: string[];
 }
 
 import { useAiStore } from "@/stores/useAiStore";
@@ -33,11 +35,11 @@ export default function ProfileOptimizer() {
   const { toast } = useToast();
   const { hasAccess, isLoading: accessLoading } = useAiAccess();
   
-  const { optimizationResult, setOptimizationData, clearOptimizationData } = useAiStore();
+  const { optimizationResult, setOptimizationData } = useAiStore();
   
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
-  const [result, setResult] = useState<OptimizationResult | null>(optimizationResult);
+  const [result, setResult] = useState<OptimizationResult | null>(optimizationResult as any);
 
   const handleAnalyze = async () => {
     if (!profile) return;
