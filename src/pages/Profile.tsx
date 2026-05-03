@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { BlockedUsersList } from "@/components/BlockedUsersList";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
 import { AuthSplitLayout } from "@/components/AuthSplitLayout";
+import type { Profile as MemberProfile } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,15 +14,20 @@ import { Layout } from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
 import {
   Camera,
+  CheckCircle2,
+  BookOpen,
+  Briefcase,
   HeartHandshake,
   Loader2,
   LockKeyhole,
+  MapPin,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
   UserCircle,
 } from "lucide-react";
 import { generateEmbedding } from "@/lib/ai";
+import { getProfileCompletion } from "@/lib/profileJourney";
 import { cn } from "@/lib/utils";
 
 interface ProfilePageProps {
@@ -63,7 +69,7 @@ type ProfileFormState = {
 };
 
 export default function ProfilePage({ mode }: ProfilePageProps) {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { currentUser, profile, refetchProfile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -276,7 +282,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
 
     await refetchProfile();
     toast({ title: mode === "create" ? "Profile created!" : "Profile updated!" });
-    setLocation("/browse");
+    navigate("/browse");
     setLoading(false);
   };
 
@@ -286,12 +292,53 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const completionProfile = useMemo(
+    () => ({
+      id: currentUser?.id || "profile-preview",
+      name: form.name,
+      age: Number(form.age) || 0,
+      gender: (form.gender || "other") as MemberProfile["gender"],
+      religion: form.religion,
+      city: form.city,
+      education: form.education,
+      profession: form.profession,
+      bio: form.bio,
+      role: profile?.role || "user",
+      is_blocked: profile?.is_blocked || false,
+      avatar_url: form.avatar_url,
+      languages: form.languages,
+      ethnicity: form.ethnicity,
+      willing_to_relocate: form.willing_to_relocate,
+      introvert_extrovert: form.introvert_extrovert,
+      hobbies: form.hobbies,
+      habits: form.habits,
+      social_preferences: form.social_preferences,
+      career_ambition: form.career_ambition,
+      family_goals: form.family_goals,
+      lifestyle_choices: form.lifestyle_choices,
+      height: form.height ? Number(form.height) : undefined,
+      fitness_level: form.fitness_level,
+      style: form.style,
+      skin_tone: form.skin_tone,
+      search_intent: form.search_intent,
+      prompts: form.prompts,
+      voice_url: form.voice_url,
+      video_url: form.video_url,
+      weight: form.weight ? Number(form.weight) : undefined,
+      created_at: profile?.created_at || new Date().toISOString(),
+      updated_at: profile?.updated_at,
+    }) as MemberProfile,
+    [currentUser?.id, form, profile]
+  );
+  const profileCompletion = getProfileCompletion(completionProfile);
+  const requiredFieldsComplete = [form.name, form.age, form.gender, form.religion, form.city].filter(Boolean).length;
+
   const settingsSections = [
-    { id: "profile-basics", label: "Profile Settings", icon: UserCircle },
+    { id: "profile-basics", label: "Essentials", icon: UserCircle },
     { id: "background", label: "Background", icon: ShieldCheck },
     { id: "lifestyle", label: "Lifestyle", icon: Sparkles },
-    { id: "preferences", label: "Preferences", icon: HeartHandshake },
-    { id: "media", label: "Media", icon: SlidersHorizontal },
+    { id: "preferences", label: "Goals", icon: HeartHandshake },
+    { id: "media", label: "Story & Media", icon: SlidersHorizontal },
     ...(mode === "edit" ? [{ id: "privacy", label: "Privacy", icon: LockKeyhole }] : []),
   ];
 
@@ -309,7 +356,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
         "min-h-full",
         isCreateMode
           ? "bg-transparent p-0"
-          : "bg-[linear-gradient(135deg,hsl(var(--secondary)/0.56),hsl(var(--accent)/0.34),hsl(var(--background)))] p-3 sm:p-4"
+          : "bg-[radial-gradient(circle_at_16%_0%,hsl(var(--primary)/0.12),transparent_28%),linear-gradient(135deg,hsl(var(--secondary)/0.54),hsl(var(--background))_58%,hsl(var(--accent)/0.22))] p-3 pb-24 dark:bg-[radial-gradient(circle_at_16%_0%,hsl(var(--primary)/0.18),transparent_28%),linear-gradient(135deg,hsl(var(--background)),hsl(var(--card))_60%,hsl(var(--accent)/0.12))] sm:p-4 sm:pb-24 lg:pb-4"
       )}
     >
       <div
@@ -318,10 +365,36 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
           isCreateMode ? "max-w-none" : "max-w-[1180px] lg:flex-row"
         )}
       >
-        <aside className={cn("hidden w-[248px] shrink-0 overflow-hidden rounded-[24px] border border-border/70 bg-card/90 shadow-sm lg:sticky lg:top-4 lg:block", isCreateMode && "lg:hidden")}>
+        <aside className={cn("hidden w-[268px] shrink-0 overflow-hidden rounded-[24px] border border-border/70 bg-card/95 shadow-sm lg:sticky lg:top-4 lg:block", isCreateMode && "lg:hidden")}>
           <div className="border-b border-border/70 px-5 py-4">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Account settings</p>
-            <h2 className="mt-1 text-lg font-bold text-foreground">{mode === "create" ? "Create profile" : "Edit profile"}</h2>
+            <h2 className="mt-1 text-lg font-bold text-foreground">{mode === "create" ? "Create profile" : "Profile studio"}</h2>
+          </div>
+          <div className="border-b border-border/70 p-4">
+            <div className="flex items-center gap-3">
+              <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-2xl bg-primary/10">
+                {avatarPreview ? (
+                  <img src={avatarPreview} alt={displayName} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center font-serif text-2xl font-bold text-primary">
+                    {displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-foreground">{displayName}</p>
+                <p className="truncate text-xs text-muted-foreground">{form.profession || "Profession not added"}</p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between text-xs">
+                <span className="font-semibold text-muted-foreground">Profile strength</span>
+                <span className="font-bold text-primary">{profileCompletion}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${profileCompletion}%` }} />
+              </div>
+            </div>
           </div>
           <nav className="space-y-1 p-3">
             {settingsSections.map(({ id, label, icon: Icon }) => (
@@ -344,7 +417,21 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
         </aside>
 
         <div className={isCreateMode ? "block" : "lg:hidden"}>
-          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-border/70 bg-card/90 p-2 shadow-sm">
+          <div className="mb-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Profile strength</p>
+                <p className="mt-1 text-lg font-bold text-foreground">{profileCompletion}% complete</p>
+              </div>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                {requiredFieldsComplete}/5
+              </div>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${profileCompletion}%` }} />
+            </div>
+          </div>
+          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-border/70 bg-card/95 p-2 shadow-sm">
             {settingsSections.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -377,14 +464,18 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Vivah profile</p>
                 <h1 className="mt-1 text-2xl font-bold text-foreground sm:text-3xl">
-                  Profile Settings
+                  Shape your best first impression
                 </h1>
                 <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-                  Keep your details up to date for better AI recommendations.
+                  Keep the essentials accurate, then add the story and values that make a match feel real.
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => setLocation("/browse")}>
+              <div className="hidden gap-2 sm:flex">
+                <div className="mr-2 hidden items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1.5 text-xs font-semibold text-muted-foreground lg:flex">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+                  {profileCompletion}% complete
+                </div>
+                <Button type="button" variant="outline" onClick={() => navigate("/browse")}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={loading || uploadingPhoto}>
@@ -404,8 +495,8 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
           <section id="profile-basics" onFocusCapture={() => setActiveSection("profile-basics")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
             <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
               <div>
-                <h2 className="text-base font-bold text-foreground">Profile Settings</h2>
-                <p className="mt-1 text-sm leading-6 text-muted-foreground">Your public identity, photo, and essential match details.</p>
+                <h2 className="text-base font-bold text-foreground">Essentials</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">Your public identity, photo, and must-have match details.</p>
               </div>
 
               <div className="space-y-6">
@@ -438,6 +529,20 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-bold text-foreground">{displayName}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">JPG, PNG or WebP. Max 5 MB.</p>
+                    <div className="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-3">
+                      <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                        <MapPin className="h-3.5 w-3.5 text-primary" />
+                        <span className="truncate">{form.city || "City"}</span>
+                      </span>
+                      <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                        <Briefcase className="h-3.5 w-3.5 text-primary" />
+                        <span className="truncate">{form.profession || "Profession"}</span>
+                      </span>
+                      <span className="inline-flex min-w-0 items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                        <BookOpen className="h-3.5 w-3.5 text-primary" />
+                        <span className="truncate">{form.religion || "Faith"}</span>
+                      </span>
+                    </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Button type="button" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto}>
                         Upload New
@@ -565,7 +670,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
           <section id="preferences" onFocusCapture={() => setActiveSection("preferences")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
             <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
               <div>
-                <h2 className="text-base font-bold text-foreground">Preferences</h2>
+                <h2 className="text-base font-bold text-foreground">Goals</h2>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">Values, family goals, and what you are looking for.</p>
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -599,7 +704,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
           <section id="media" onFocusCapture={() => setActiveSection("media")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
             <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
               <div>
-                <h2 className="text-base font-bold text-foreground">Media & Prompts</h2>
+                <h2 className="text-base font-bold text-foreground">Story & Media</h2>
                 <p className="mt-1 text-sm leading-6 text-muted-foreground">Bio, intro links, and prompt answers others will see.</p>
               </div>
               <div className="space-y-5">
@@ -653,22 +758,54 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
             </section>
           )}
 
-          <div className={cn("flex flex-col gap-3 bg-card px-5 py-5 sm:flex-row sm:items-center sm:justify-end sm:px-7", isCreateMode && "bg-transparent px-0 sm:px-0")}>
+          <div
+            className={cn(
+              "flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between",
+              isCreateMode
+                ? "bg-transparent px-0 py-5 sm:px-0"
+                : "sticky bottom-0 z-20 border-t border-border/70 bg-card/95 px-5 py-4 shadow-[0_-16px_36px_hsl(var(--foreground)/0.08)] backdrop-blur-md sm:hidden"
+            )}
+          >
+            {!isCreateMode && (
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-background/60 px-3 py-2 sm:min-w-[220px]">
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground">Profile strength</p>
+                  <p className="text-sm font-bold text-foreground">{profileCompletion}% complete</p>
+                </div>
+                <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary" style={{ width: `${profileCompletion}%` }} />
+                </div>
+              </div>
+            )}
             {mode === "edit" && (
-              <Button type="button" variant="outline" onClick={() => setLocation("/browse")}>
-                Cancel
+              <div className="flex gap-2 sm:ml-auto">
+                <Button type="button" variant="outline" onClick={() => navigate("/browse")} className="flex-1 sm:flex-none">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading || uploadingPhoto} size="lg" className="min-w-[160px] flex-1 sm:flex-none">
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </div>
+            )}
+            {mode === "create" && (
+              <Button type="submit" disabled={loading || uploadingPhoto} size="lg" className="min-w-[180px]">
+                {loading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create My Profile"
+                )}
               </Button>
             )}
-            <Button type="submit" disabled={loading || uploadingPhoto} size="lg" className="min-w-[180px]">
-              {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  {mode === "create" ? "Creating..." : "Saving..."}
-                </>
-              ) : (
-                mode === "create" ? "Create My Profile" : "Save Changes"
-              )}
-            </Button>
           </div>
         </form>
       </div>

@@ -1,33 +1,125 @@
-import { useState, useEffect } from "react";
-import { useLocation, useRoute } from "wouter";
+import { useEffect, useMemo, useState, type ElementType } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
 import { useBlockStore } from "@/stores/useBlockStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
-import type { Profile, Interest } from "@/types";
+import type { Interest, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ReportDialog } from "@/components/ReportDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { 
-  MapPin, Briefcase, BookOpen, Heart, MessageCircle, 
-  ArrowLeft, CheckCircle, Clock, Ban, Flag, ShieldAlert, Sparkles,
-  Globe, Users, Calendar, Dumbbell, Palette, Rocket, Home,
-  Wine, Search, Smile, Quote
+import {
+  ArrowLeft,
+  Ban,
+  BookOpen,
+  Briefcase,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Dumbbell,
+  Flag,
+  Globe,
+  GraduationCap,
+  Heart,
+  Home,
+  MapPin,
+  MessageCircle,
+  Palette,
+  Quote,
+  Rocket,
+  Search,
+  ShieldAlert,
+  Smile,
+  Sparkles,
+  Users,
+  Wine,
 } from "lucide-react";
 import { toast } from "sonner";
+import { getMatchReasons, getProfileRelationStatus } from "@/lib/profileJourney";
+
+type DetailTileProps = {
+  icon: ElementType;
+  label: string;
+  value?: string | number | null;
+  note?: string | null;
+};
+
+type SectionCardProps = {
+  title: string;
+  icon: ElementType;
+  children: React.ReactNode;
+  empty?: boolean;
+};
+
+const relationCopy: Record<string, string> = {
+  none: "Open to connect",
+  sent_pending: "Interest sent",
+  received_pending: "Waiting for your response",
+  accepted: "Connected",
+  rejected: "Interest closed",
+  blocked: "Unavailable",
+};
+
+const hasText = (value?: string | number | null) => String(value ?? "").trim().length > 0;
+
+function DetailTile({ icon: Icon, label, value, note }: DetailTileProps) {
+  if (!hasText(value)) return null;
+
+  return (
+    <div className="rounded-xl border border-border/70 bg-background/60 p-3">
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Icon className="h-4 w-4" />
+        </span>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">{label}</p>
+          <p className="mt-1 truncate text-sm font-semibold text-foreground">{value}</p>
+          {note && <p className="mt-0.5 text-xs text-muted-foreground">{note}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SectionCard({ title, icon: Icon, children, empty }: SectionCardProps) {
+  return (
+    <Card className="border-card-border bg-card/95 shadow-sm">
+      <CardContent className="p-5 sm:p-6">
+        <div className="mb-4 flex items-center gap-2">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Icon className="h-4 w-4" />
+          </span>
+          <h2 className="text-base font-bold text-foreground">{title}</h2>
+        </div>
+        {empty ? (
+          <p className="rounded-xl border border-dashed border-border bg-background/50 px-4 py-5 text-sm text-muted-foreground">
+            Not shared yet.
+          </p>
+        ) : (
+          children
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function UserProfile() {
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute("/user/:id");
-  const userId = params?.id;
+  const navigate = useNavigate();
+  const { id: userId } = useParams<{ id: string }>();
   const { currentUser, profile: myProfile } = useAuth();
   const { isBlocked, isBlockedBy, isBlockRelation, blockUser, unblockUser, fetchBlocks } = useBlockStore();
   const { createNotification } = useNotificationStore();
@@ -65,7 +157,7 @@ export default function UserProfile() {
       }
     };
     fetchAll();
-  }, [userId, currentUser]);
+  }, [userId, currentUser, fetchBlocks]);
 
   const handleSendInterest = async () => {
     if (!currentUser || !userId) return;
@@ -88,7 +180,7 @@ export default function UserProfile() {
     } else {
       setInterest(data as Interest);
       toast.success(`Interest sent to ${profile?.name}!`);
-      await createNotification(userId, 'interest_received', currentUser.id, myProfile?.name || 'Someone');
+      await createNotification(userId, "interest_received", currentUser.id, myProfile?.name || "Someone");
     }
     setSending(false);
   };
@@ -96,7 +188,7 @@ export default function UserProfile() {
   const handleBlock = async () => {
     if (!currentUser || !userId) return;
     setBlocking(true);
-    const success = await blockUser(currentUser?.id, userId);
+    const success = await blockUser(currentUser.id, userId);
     if (success) {
       toast.success(`${profile?.name} has been blocked.`);
     } else {
@@ -109,7 +201,7 @@ export default function UserProfile() {
   const handleUnblock = async () => {
     if (!currentUser || !userId) return;
     setBlocking(true);
-    const success = await unblockUser(currentUser?.id, userId);
+    const success = await unblockUser(currentUser.id, userId);
     if (success) {
       toast.success(`${profile?.name} has been unblocked.`);
     } else {
@@ -118,44 +210,119 @@ export default function UserProfile() {
     setBlocking(false);
   };
 
+  const handleUpdateReceivedInterest = async (status: "accepted" | "rejected") => {
+    if (!currentUser || !reverseInterest || !profile) return;
+    setSending(true);
+
+    const { data, error } = await supabase
+      .from("interests")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("id", reverseInterest.id)
+      .select()
+      .maybeSingle();
+
+    if (error) {
+      toast.error(error.message);
+      setSending(false);
+      return;
+    }
+
+    setReverseInterest(data as Interest);
+    if (status === "accepted") {
+      toast.success(`You can now chat with ${profile.name}`);
+      await createNotification(
+        reverseInterest.sender_id,
+        "interest_accepted",
+        currentUser.id,
+        myProfile?.name || "Someone"
+      );
+    } else {
+      toast.success("Interest declined");
+    }
+    setSending(false);
+  };
+
   const blocked = userId ? isBlocked(userId) : false;
   const blockedByThem = userId ? isBlockedBy(userId) : false;
   const hasBlockRelation = userId ? isBlockRelation(userId) : false;
-
-  const acceptedInterest = interest?.status === 'accepted' || reverseInterest?.status === 'accepted';
+  const relationStatus = getProfileRelationStatus({
+    sentInterest: interest,
+    receivedInterest: reverseInterest,
+    blocked: hasBlockRelation,
+  });
+  const matchReasons = useMemo(() => (profile ? getMatchReasons(profile, myProfile) : []), [profile, myProfile]);
+  const promptEntries = useMemo(
+    () => (profile ? Object.entries(profile.prompts || {}).filter(([, answer]) => hasText(answer)) : []),
+    [profile]
+  );
+  const physicalDetails = useMemo(
+    () =>
+      profile
+        ? [
+            profile.height ? `Height ${profile.height} cm` : "",
+            profile.weight ? `Weight ${profile.weight} kg` : "",
+            profile.fitness_level ? `Fitness ${profile.fitness_level}` : "",
+            profile.style ? `Style ${profile.style}` : "",
+          ].filter(Boolean)
+        : [],
+    [profile]
+  );
 
   const getInterestButton = () => {
     if (hasBlockRelation) return null;
 
-    if (acceptedInterest) {
+    if (relationStatus === "accepted") {
       return (
-        <Button onClick={() => setLocation(`/chat/${userId}`)} className="bg-primary hover:bg-primary/90">
-          <MessageCircle className="h-4 w-4 mr-2" />
+        <Button onClick={() => navigate(`/chat/${userId}`)} className="pressable w-full gap-2">
+          <MessageCircle className="h-4 w-4" />
           Open Chat
         </Button>
       );
     }
 
-    if (!interest && !reverseInterest) {
+    if (relationStatus === "received_pending") {
       return (
-        <Button onClick={handleSendInterest} disabled={sending} className="bg-primary hover:bg-primary/90">
-          <Heart className="h-4 w-4 mr-2" />
+        <div className="grid grid-cols-2 gap-2">
+          <Button
+            onClick={() => handleUpdateReceivedInterest("accepted")}
+            disabled={sending}
+            className="pressable gap-2 bg-green-600 text-white hover:bg-green-700"
+          >
+            <CheckCircle className="h-4 w-4" />
+            Accept
+          </Button>
+          <Button
+            onClick={() => handleUpdateReceivedInterest("rejected")}
+            disabled={sending}
+            variant="outline"
+            className="pressable"
+          >
+            Decline
+          </Button>
+        </div>
+      );
+    }
+
+    if (relationStatus === "none") {
+      return (
+        <Button onClick={handleSendInterest} disabled={sending} className="pressable w-full gap-2">
+          <Heart className="h-4 w-4" />
           {sending ? "Sending..." : "Send Interest"}
         </Button>
       );
     }
-    if (interest?.status === "pending") {
+    if (relationStatus === "sent_pending") {
       return (
-        <Button variant="outline" disabled className="border-primary/20 text-primary/70">
-          <Clock className="h-4 w-4 mr-2" />
+        <Button variant="outline" disabled className="w-full gap-2 border-primary/20 text-primary/70">
+          <Clock className="h-4 w-4" />
           Interest Sent
         </Button>
       );
     }
-    if (interest?.status === "rejected") {
+    if (relationStatus === "rejected") {
       return (
-        <Button variant="outline" disabled>
-          Interest Not Accepted
+        <Button variant="outline" disabled className="w-full">
+          Interest Closed
         </Button>
       );
     }
@@ -165,16 +332,13 @@ export default function UserProfile() {
   if (loading) {
     return (
       <Layout>
-        <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-          <Skeleton className="h-10 w-48" />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-1 space-y-6">
-              <Skeleton className="h-64 w-full rounded-2xl" />
-              <Skeleton className="h-32 w-full rounded-2xl" />
-            </div>
-            <div className="md:col-span-2 space-y-6">
-              <Skeleton className="h-48 w-full rounded-2xl" />
-              <Skeleton className="h-64 w-full rounded-2xl" />
+        <div className="min-h-full bg-[linear-gradient(135deg,hsl(var(--secondary)/0.45),hsl(var(--background)))] px-4 py-6 pb-28 md:px-8 md:py-8">
+          <div className="mx-auto max-w-6xl space-y-5">
+            <Skeleton className="h-10 w-44 rounded-full" />
+            <Skeleton className="h-[420px] w-full rounded-[24px]" />
+            <div className="grid gap-4 lg:grid-cols-3">
+              <Skeleton className="h-52 rounded-[18px] lg:col-span-2" />
+              <Skeleton className="h-52 rounded-[18px]" />
             </div>
           </div>
         </div>
@@ -185,295 +349,261 @@ export default function UserProfile() {
   if (!profile) {
     return (
       <Layout>
-        <div className="flex flex-col items-center justify-center h-full py-32 text-center">
-          <ShieldAlert className="h-16 w-16 text-muted-foreground/30 mb-4" />
-          <h2 className="text-2xl font-serif font-bold">Profile not found</h2>
-          <p className="text-muted-foreground mt-2">The user you are looking for doesn't exist or is unavailable.</p>
-          <Button variant="outline" onClick={() => setLocation("/browse")} className="mt-8">Back to Browse</Button>
+        <div className="flex h-full flex-col items-center justify-center px-4 py-32 text-center">
+          <ShieldAlert className="mb-4 h-16 w-16 text-muted-foreground/30" />
+          <h2 className="text-2xl font-bold text-foreground">Profile not found</h2>
+          <p className="mt-2 max-w-sm text-muted-foreground">The member you are looking for does not exist or is unavailable.</p>
+          <Button variant="outline" onClick={() => navigate("/browse")} className="mt-8">
+            Back to Browse
+          </Button>
         </div>
       </Layout>
     );
   }
 
+  const hasLifestyle = hasText(profile.introvert_extrovert) || hasText(profile.habits) || hasText(profile.social_preferences) || profile.hobbies?.length > 0;
+  const hasGoals = hasText(profile.career_ambition) || hasText(profile.family_goals) || hasText(profile.search_intent) || hasText(profile.lifestyle_choices);
+
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto px-4 py-8 space-y-8 animate-in fade-in duration-700">
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => setLocation("/browse")}
-            className="group text-muted-foreground hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-            Back to Browse
-          </Button>
-          
-          <div className="flex gap-2">
+      <div className="min-h-full bg-[radial-gradient(circle_at_18%_0%,hsl(var(--primary)/0.12),transparent_28%),linear-gradient(135deg,hsl(var(--secondary)/0.52),hsl(var(--background))_52%,hsl(var(--accent)/0.22))] px-3 py-4 pb-28 dark:bg-[radial-gradient(circle_at_18%_0%,hsl(var(--primary)/0.20),transparent_28%),linear-gradient(135deg,hsl(var(--background)),hsl(var(--card))_58%,hsl(var(--accent)/0.12))] sm:px-5 md:px-8 md:py-8">
+        <div className="mx-auto max-w-6xl space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => navigate("/browse")}
+              className="pressable gap-2 rounded-full text-muted-foreground hover:text-primary"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Browse
+            </Button>
+
             {currentUser && userId !== currentUser.id && (
-              <>
-                <Button variant="ghost" size="icon" onClick={() => setReportDialogOpen(true)} className="text-muted-foreground">
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setReportDialogOpen(true)}
+                  className="pressable rounded-full text-muted-foreground hover:text-primary"
+                  aria-label="Report profile"
+                >
                   <Flag className="h-4 w-4" />
                 </Button>
                 {blocked ? (
-                  <Button variant="ghost" size="icon" onClick={() => setUnblockDialogOpen(true)} className="text-amber-600">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setUnblockDialogOpen(true)}
+                    className="pressable rounded-full text-amber-600"
+                    aria-label="Unblock profile"
+                  >
                     <Ban className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button variant="ghost" size="icon" onClick={() => setBlockDialogOpen(true)} className="text-muted-foreground">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setBlockDialogOpen(true)}
+                    className="pressable rounded-full text-muted-foreground hover:text-destructive"
+                    aria-label="Block profile"
+                  >
                     <Ban className="h-4 w-4" />
                   </Button>
                 )}
-              </>
+              </div>
             )}
           </div>
-        </div>
 
-        {/* Status Banners */}
-        {blockedByThem && (
-          <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20 flex items-center gap-3">
-            <ShieldAlert className="h-5 w-5 text-destructive" />
-            <p className="text-sm font-medium text-destructive">This user has restricted interactions with you.</p>
-          </div>
-        )}
-        {blocked && (
-          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-3">
-            <Ban className="h-5 w-5 text-amber-600" />
-            <p className="text-sm font-medium text-amber-700">You have blocked this user.</p>
-          </div>
-        )}
+          {blockedByThem && (
+            <div className="flex items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/10 p-4">
+              <ShieldAlert className="h-5 w-5 text-destructive" />
+              <p className="text-sm font-medium text-destructive">This member has restricted interactions with you.</p>
+            </div>
+          )}
+          {blocked && (
+            <div className="flex items-center gap-3 rounded-xl border border-amber-300/60 bg-amber-500/10 p-4">
+              <Ban className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              <p className="text-sm font-medium text-amber-700 dark:text-amber-300">You have blocked this member.</p>
+            </div>
+          )}
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          
-          {/* Left Column: Avatar & Quick Info */}
-          <div className="md:col-span-1 space-y-6">
-            <Card className="border-card-border overflow-hidden shadow-lg">
-              <div className="aspect-square bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center relative">
-                <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} className="w-48 h-48 border-8 border-background shadow-xl" />
-                {/* {profile.is_verified && (
-                  <div className="absolute bottom-6 right-6 bg-primary text-primary-foreground p-1.5 rounded-full shadow-lg">
-                    <CheckCircle className="h-5 w-5" />
+          <section className="overflow-hidden rounded-[24px] border border-border/70 bg-card shadow-sm">
+            <div className="grid lg:grid-cols-[minmax(300px,380px)_1fr]">
+              <div className="relative min-h-[340px] overflow-hidden bg-[linear-gradient(135deg,hsl(var(--primary)/0.18),hsl(var(--accent)/0.30))] lg:min-h-[500px]">
+                {profile.avatar_url ? (
+                  <img src={profile.avatar_url} alt={profile.name} className="h-full min-h-[340px] w-full object-cover lg:min-h-[500px]" />
+                ) : (
+                  <div className="flex h-full min-h-[340px] items-center justify-center lg:min-h-[500px]">
+                    <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} className="h-44 w-44 border-8 border-background shadow-xl" />
                   </div>
-                )} */}
-              </div>
-              <CardContent className="pt-6 text-center">
-                <h1 className="text-3xl font-serif font-bold">{profile.name}, {profile.age}</h1>
-                <p className="text-muted-foreground font-medium mt-1">{profile.profession}</p>
-                
-                <div className="mt-6 flex flex-col gap-3">
-                  {getInterestButton()}
-                  {acceptedInterest && (
-                    <Badge className="py-2 bg-green-100 text-green-700 border-green-200 justify-center">
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      Connected
-                    </Badge>
-                  )}
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/12 to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
+                  <Badge className="mb-3 border-white/20 bg-white/18 text-white backdrop-blur">
+                    {relationCopy[relationStatus]}
+                  </Badge>
+                  <h1 className="text-3xl font-bold leading-tight sm:text-4xl">
+                    {profile.name}, {profile.age}
+                  </h1>
+                  <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/86">
+                    {profile.city && (
+                      <span className="inline-flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" />
+                        {profile.city}
+                      </span>
+                    )}
+                    {profile.profession && (
+                      <span className="inline-flex items-center gap-1">
+                        <Briefcase className="h-3.5 w-3.5" />
+                        {profile.profession}
+                      </span>
+                    )}
+                  </p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
 
-            <Card className="border-card-border shadow-md">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">Location & Background</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 pt-2">
-                {profile.city && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="bg-primary/10 p-2 rounded-lg"><MapPin className="h-4 w-4 text-primary" /></div>
-                    <div>
-                      <p className="font-semibold">{profile.city}</p>
-                      <p className="text-xs text-muted-foreground">{profile.willing_to_relocate ? 'Willing to relocate' : 'Prefer staying here'}</p>
-                    </div>
+              <div className="flex flex-col justify-between gap-6 p-5 sm:p-7 lg:p-8">
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Profile summary</p>
+                    <h2 className="mt-2 text-2xl font-bold text-foreground">A closer look at {profile.name}</h2>
+                    <p className="mt-3 max-w-2xl text-base leading-7 text-muted-foreground">
+                      {profile.bio || "Not shared yet."}
+                    </p>
                   </div>
-                )}
-                {profile.religion && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="bg-primary/10 p-2 rounded-lg"><BookOpen className="h-4 w-4 text-primary" /></div>
-                    <div>
-                      <p className="font-semibold">{profile.religion}</p>
-                      <p className="text-xs text-muted-foreground">{profile.ethnicity || 'Identity'}</p>
-                    </div>
-                  </div>
-                )}
-                {profile.languages && profile.languages.length > 0 && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="bg-primary/10 p-2 rounded-lg"><Globe className="h-4 w-4 text-primary" /></div>
-                    <div className="flex flex-wrap gap-1">
-                      {profile.languages.map((lang, i) => (
-                        <Badge key={i} variant="secondary" className="text-[10px] py-0">{lang}</Badge>
+
+                  {matchReasons.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {matchReasons.map((reason) => (
+                        <Badge key={reason} variant="secondary" className="rounded-full bg-primary/10 px-3 py-1 text-primary">
+                          <Sparkles className="mr-1 h-3 w-3" />
+                          {reason}
+                        </Badge>
                       ))}
                     </div>
+                  )}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DetailTile icon={BookOpen} label="Faith" value={profile.religion} note={profile.ethnicity} />
+                    <DetailTile icon={GraduationCap} label="Education" value={profile.education} />
+                    <DetailTile icon={Globe} label="Languages" value={profile.languages?.join(", ")} />
+                    <DetailTile
+                      icon={Home}
+                      label="Relocation"
+                      value={profile.willing_to_relocate ? "Open to relocate" : profile.city ? "Prefers current city" : ""}
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-border/70 bg-background/65 p-4">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-foreground">Next step</p>
+                      <p className="text-xs text-muted-foreground">Actions update based on your connection status.</p>
+                    </div>
+                    {relationStatus === "accepted" && (
+                      <Badge className="bg-green-500/12 text-green-700 dark:text-green-300">
+                        <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                        Connected
+                      </Badge>
+                    )}
+                  </div>
+                  {getInterestButton()}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <main className="space-y-4">
+              <SectionCard title="Lifestyle & Personality" icon={Smile} empty={!hasLifestyle}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <DetailTile
+                    icon={Users}
+                    label="Social energy"
+                    value={profile.introvert_extrovert ? `${profile.introvert_extrovert}/10 extrovert scale` : ""}
+                    note={profile.social_preferences}
+                  />
+                  <DetailTile icon={Clock} label="Daily habits" value={profile.habits} />
+                </div>
+                {profile.hobbies?.length > 0 && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {profile.hobbies.map((hobby) => (
+                      <Badge key={hobby} variant="outline" className="rounded-full bg-primary/5 px-3 py-1">
+                        {hobby}
+                      </Badge>
+                    ))}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </SectionCard>
 
-          {/* Right Column: Detailed Info */}
-          <div className="md:col-span-2 space-y-8">
-            
-            {/* Bio */}
-            <div className="space-y-4">
-              <h2 className="text-2xl font-serif font-bold flex items-center gap-2">
-                <Quote className="h-6 w-6 text-primary/50" />
-                About Me
-              </h2>
-              <Card className="border-none shadow-none bg-muted/30 relative">
-                <CardContent className="pt-6">
-                  <p className="text-lg leading-relaxed text-foreground/90 italic">
-                    "{profile.bio || `Hi, I'm ${profile.name}! I'm looking for a meaningful connection and someone to share life's adventures with.`}"
-                  </p>
+              <SectionCard title="Intent & Future" icon={Rocket} empty={!hasGoals}>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <DetailTile icon={Search} label="Looking for" value={profile.search_intent} />
+                  <DetailTile icon={Briefcase} label="Career ambition" value={profile.career_ambition} />
+                  <DetailTile icon={Home} label="Family goals" value={profile.family_goals} />
+                  <DetailTile icon={Wine} label="Lifestyle choices" value={profile.lifestyle_choices} />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Deeper Insights" icon={Quote} empty={promptEntries.length === 0}>
+                <div className="space-y-3">
+                  {promptEntries.map(([question, answer]) => (
+                    <div key={question} className="rounded-xl border border-border/70 bg-background/60 p-4">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary">{question}</p>
+                      <p className="mt-2 text-sm leading-6 text-foreground">{answer}</p>
+                    </div>
+                  ))}
+                </div>
+              </SectionCard>
+            </main>
+
+            <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+              <Card className="border-card-border bg-card/95 shadow-sm">
+                <CardContent className="p-5">
+                  <h2 className="text-sm font-bold text-foreground">Quick facts</h2>
+                  <div className="mt-4 space-y-3">
+                    <DetailTile icon={MapPin} label="Location" value={profile.city} />
+                    <DetailTile icon={Briefcase} label="Profession" value={profile.profession} />
+                    <DetailTile icon={BookOpen} label="Religion" value={profile.religion} />
+                  </div>
                 </CardContent>
               </Card>
-            </div>
 
-            {/* Lifestyle & Personality */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-serif font-bold flex items-center gap-2 border-b pb-2">
-                <Smile className="h-5 w-5 text-primary" />
-                Lifestyle & Personality
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="border-card-border shadow-sm">
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Social Preference</p>
-                      <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-primary" />
-                        <span className="font-medium text-sm">{profile.introvert_extrovert ? `${profile.introvert_extrovert}/10 on Extrovert Scale` : 'Socially Adaptive'}</span>
+              {(physicalDetails.length > 0 || profile.voice_url || profile.video_url) && (
+                <Card className="border-card-border bg-card/95 shadow-sm">
+                  <CardContent className="p-5">
+                    <h2 className="text-sm font-bold text-foreground">Additional details</h2>
+                    {physicalDetails.length > 0 && (
+                      <div className="mt-4 flex flex-wrap gap-2 text-xs text-muted-foreground">
+                        {physicalDetails.map((detail) => (
+                          <span key={detail} className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1">
+                            {detail.includes("Height") ? (
+                              <Calendar className="h-3 w-3" />
+                            ) : detail.includes("Weight") || detail.includes("Fitness") ? (
+                              <Dumbbell className="h-3 w-3" />
+                            ) : (
+                              <Palette className="h-3 w-3" />
+                            )}
+                            {detail}
+                          </span>
+                        ))}
                       </div>
-                    </div>
-                    {profile.habits && (
-                      <div className="space-y-1">
-                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Daily Habits</p>
-                        <div className="flex items-center gap-2">
-                          <Clock className="h-4 w-4 text-primary" />
-                          <span className="font-medium text-sm">{profile.habits}</span>
-                        </div>
+                    )}
+                    {(profile.voice_url || profile.video_url) && (
+                      <div className="mt-4 space-y-2">
+                        {profile.voice_url && <p className="text-sm text-muted-foreground">Voice intro shared</p>}
+                        {profile.video_url && <p className="text-sm text-muted-foreground">Video intro shared</p>}
                       </div>
                     )}
                   </CardContent>
                 </Card>
-                <Card className="border-card-border shadow-sm">
-                  <CardContent className="pt-4 space-y-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Hobbies & Interests</p>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {profile.hobbies && profile.hobbies.length > 0 ? (
-                          profile.hobbies.map((hobby, i) => (
-                            <Badge key={i} variant="outline" className="bg-primary/5 border-primary/20">{hobby}</Badge>
-                          ))
-                        ) : (
-                          <span className="text-sm text-muted-foreground">No hobbies listed</span>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Values & Goals */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-serif font-bold flex items-center gap-2 border-b pb-2">
-                <Rocket className="h-5 w-5 text-primary" />
-                Values & Future Goals
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Card className="border-card-border shadow-sm">
-                  <CardContent className="pt-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Briefcase className="h-4 w-4 text-primary mt-1" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Career Ambition</p>
-                        <p className="text-sm font-medium">{profile.career_ambition || 'Professional Growth'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Home className="h-4 w-4 text-primary mt-1" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Family Goals</p>
-                        <p className="text-sm font-medium">{profile.family_goals || 'Building a life together'}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-card-border shadow-sm">
-                  <CardContent className="pt-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Search className="h-4 w-4 text-primary mt-1" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Search Intent</p>
-                        <p className="text-sm font-medium">{profile.search_intent || 'Serious Relationship'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <Wine className="h-4 w-4 text-primary mt-1" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Lifestyle Choices</p>
-                        <p className="text-sm font-medium">{profile.lifestyle_choices || 'Balanced'}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Personality Prompts */}
-            {profile.prompts && Object.keys(profile.prompts).length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-xl font-serif font-bold flex items-center gap-2 border-b pb-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  Deeper Insights
-                </h3>
-                <div className="space-y-4">
-                  {Object.entries(profile.prompts).map(([question, answer], i) => (
-                    answer && (
-                      <Card key={i} className="border-l-4 border-l-primary border-card-border shadow-sm">
-                        <CardContent className="pt-4">
-                          <p className="text-xs font-bold text-primary uppercase tracking-widest mb-2">{question}</p>
-                          <p className="text-base text-foreground/90 font-medium">{answer as string}</p>
-                        </CardContent>
-                      </Card>
-                    )
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Physical Attributes (Subtle) */}
-            {(profile.height || profile.fitness_level || profile.style) && (
-              <div className="flex flex-wrap gap-4 pt-4 border-t opacity-70">
-                {profile.height && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Calendar className="h-3 w-3" />
-                    <span>Height: {profile.height}cm</span>
-                  </div>
-                )}
-                {profile.weight && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Dumbbell className="h-3 w-3" />
-                    <span>Weight: {profile.weight}kg</span>
-                  </div>
-                )}
-                {profile.fitness_level && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Dumbbell className="h-3 w-3" />
-                    <span>Fitness: {profile.fitness_level}</span>
-                  </div>
-                )}
-                {profile.style && (
-                  <div className="flex items-center gap-2 text-xs">
-                    <Palette className="h-3 w-3" />
-                    <span>Style: {profile.style}</span>
-                  </div>
-                )}
-              </div>
-            )}
+              )}
+            </aside>
           </div>
         </div>
       </div>
 
-      {/* Dialogs */}
       <AlertDialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

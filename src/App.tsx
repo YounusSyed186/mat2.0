@@ -1,5 +1,5 @@
-import { Switch, Route, Router as WouterRouter, useLocation, Redirect } from "wouter";
-import { lazy, Suspense, useEffect, type ComponentType, type LazyExoticComponent } from "react";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { lazy, Suspense, useEffect, type ComponentType, type LazyExoticComponent, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as SonnerToaster } from "sonner";
@@ -91,8 +91,8 @@ function RouteContentLoader() {
 
 function RouteFallback() {
   const { session, profile } = useAuth();
-  const [location] = useLocation();
-  const showAppShell = Boolean(session && profile && location !== "/profile/create");
+  const location = useLocation();
+  const showAppShell = Boolean(session && profile && location.pathname !== "/profile/create");
 
   if (showAppShell) {
     return (
@@ -126,23 +126,33 @@ function RoutePreloader() {
   return null;
 }
 
-function ProtectedRoute({ component: Component, ...rest }: { component: ComponentType<any>; [key: string]: any }) {
+function ProtectedRoute({
+  children,
+  allowedRoles,
+}: {
+  children: ReactNode;
+  allowedRoles?: Array<"user" | "admin" | "primary_admin">;
+}) {
   const { session, loading, profile } = useAuth();
-  const [location] = useLocation();
+  const location = useLocation();
 
   if (loading) {
     return <PageLoader />;
   }
 
   if (!session) {
-    return <Redirect to="/login" />;
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  if (!profile && location !== "/profile/create") {
-    return <Redirect to="/profile/create" />;
+  if (!profile && location.pathname !== "/profile/create") {
+    return <Navigate to="/profile/create" replace />;
   }
 
-  return <Component {...rest} />;
+  if (profile && allowedRoles && !allowedRoles.includes(profile.role)) {
+    return <Navigate to="/browse" replace />;
+  }
+
+  return <>{children}</>;
 }
 
 function HomeRedirect() {
@@ -152,15 +162,15 @@ function HomeRedirect() {
     return <PageLoader />;
   }
 
-  if (!session) return <Redirect to="/login" />;
-  if (!profile) return <Redirect to="/profile/create" />;
-  return <Redirect to="/browse" />;
+  if (!session) return <Navigate to="/login" replace />;
+  if (!profile) return <Navigate to="/profile/create" replace />;
+  return <Navigate to="/browse" replace />;
 }
 
 function ProfileCreateRoute() {
   const { session, loading } = useAuth();
   if (loading) return <PageLoader />;
-  if (!session) return <Redirect to="/login" />;
+  if (!session) return <Navigate to="/login" replace />;
   return <ProfilePage mode="create" />;
 }
 
@@ -169,43 +179,93 @@ function Router() {
     <>
       <RoutePreloader />
       <Suspense fallback={<RouteFallback />}>
-      <Switch>
-        <Route path="/" component={HomeRedirect} />
-        <Route path="/login" component={Login} />
-        <Route path="/signup" component={Signup} />
-        <Route path="/profile/create" component={ProfileCreateRoute} />
-        <Route path="/profile/edit">
-          <ProtectedRoute component={ProfilePage} mode="edit" />
-        </Route>
-        <Route path="/browse">
-          <ProtectedRoute component={Browse} />
-        </Route>
-        <Route path="/user/:id">
-          <ProtectedRoute component={UserProfile} />
-        </Route>
-        <Route path="/interests">
-          <ProtectedRoute component={Interests} />
-        </Route>
-        <Route path="/chat">
-          <ProtectedRoute component={ChatList} />
-        </Route>
-        <Route path="/chat/:userId">
-          <ProtectedRoute component={Chat} />
-        </Route>
-        <Route path="/subscriptions">
-          <ProtectedRoute component={Subscription} />
-        </Route>
-        <Route path="/admin">
-          <ProtectedRoute component={Admin} />
-        </Route>
-        <Route path="/ai-match">
-          <ProtectedRoute component={AiMatch} />
-        </Route>
-        <Route path="/profile-optimizer">
-          <ProtectedRoute component={ProfileOptimizer} />
-        </Route>
-        <Route component={NotFound} />
-      </Switch>
+        <Routes>
+          <Route path="/" element={<HomeRedirect />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/profile/create" element={<ProfileCreateRoute />} />
+          <Route
+            path="/profile/edit"
+            element={
+              <ProtectedRoute>
+                <ProfilePage mode="edit" />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/browse"
+            element={
+              <ProtectedRoute>
+                <Browse />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/user/:id"
+            element={
+              <ProtectedRoute>
+                <UserProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/interests"
+            element={
+              <ProtectedRoute>
+                <Interests />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <ChatList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/chat/:userId"
+            element={
+              <ProtectedRoute>
+                <Chat />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/subscriptions"
+            element={
+              <ProtectedRoute>
+                <Subscription />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute allowedRoles={["admin", "primary_admin"]}>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/ai-match"
+            element={
+              <ProtectedRoute>
+                <AiMatch />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile-optimizer"
+            element={
+              <ProtectedRoute>
+                <ProfileOptimizer />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </Suspense>
     </>
   );
@@ -216,9 +276,9 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+          <BrowserRouter basename={import.meta.env.BASE_URL.replace(/\/$/, "") || undefined}>
             <Router />
-          </WouterRouter>
+          </BrowserRouter>
           <Toaster />
           <SonnerToaster position="top-right" richColors />
         </AuthProvider>

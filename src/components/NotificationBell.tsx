@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useNotificationStore } from '@/stores/useNotificationStore';
 import { Bell, Heart, MessageCircle, CheckCircle } from 'lucide-react';
@@ -40,7 +40,7 @@ export function NotificationBell() {
   const { notifications, unreadCount, fetchNotifications, markAsRead, markAllAsRead, subscribeToNotifications, unsubscribe } = useNotificationStore();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (currentUser) {
@@ -64,9 +64,9 @@ export function NotificationBell() {
     if (!n.is_read) await markAsRead(n.id);
     setOpen(false);
     if (n.type === 'message') {
-      setLocation(`/chat/${n.reference_id}`);
+      navigate(`/chat/${n.reference_id}`);
     } else if (n.type === 'interest_received' || n.type === 'interest_accepted') {
-      setLocation('/interests');
+      navigate('/interests');
     }
   };
 

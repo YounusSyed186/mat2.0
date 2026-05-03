@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from "react";
-import { useRoute, useLocation } from "wouter";
+import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
 import { useBlockStore } from "@/stores/useBlockStore";
 import { useChatStore } from "@/stores/useChatStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
-import type { Message, Profile } from "@/types";
+import type { Interest, Message, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { ChatConversationPanel } from "@/components/ChatConversationPanel";
 import { Button } from "@/components/ui/button";
@@ -16,24 +16,20 @@ import {
   ArrowLeft,
   Ban,
   Lock,
-  Mic,
-  MoreVertical,
-  Plus,
-  Search,
   Send,
-  Smile,
-  Star,
-  ThumbsUp,
   Wifi,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { format, isToday, isYesterday } from "date-fns";
+import {
+  getProfileRelationStatus,
+  type ProfileRelationStatus,
+} from "@/lib/profileJourney";
 
 export default function Chat() {
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute("/chat/:userId");
-  const otherUserId = params?.userId;
+  const navigate = useNavigate();
+  const { userId: otherUserId } = useParams<{ userId: string }>();
   const { currentUser, profile: myProfile } = useAuth();
   const { toast } = useToast();
   const { isBlockRelation, fetchBlocks } = useBlockStore();
@@ -45,6 +41,7 @@ export default function Chat() {
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(true);
   const [canChat, setCanChat] = useState(false);
+  const [relationStatus, setRelationStatus] = useState<ProfileRelationStatus>("none");
   const [sending, setSending] = useState(false);
   const [connected, setConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -64,21 +61,29 @@ export default function Chat() {
 
     const fetchAll = async () => {
       setLoading(true);
-      const [{ data: prof }, { data: interest }] = await Promise.all([
+      const [{ data: prof }, { data: interestData }] = await Promise.all([
         supabase.from("profiles").select("*").eq("id", otherUserId).single(),
         supabase
           .from("interests")
           .select("*")
-          .eq("status", "accepted")
           .or(
             `and(sender_id.eq.${currentUser.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUser.id})`
           )
-          .maybeSingle(),
+          .order("created_at", { ascending: false }),
       ]);
       setOtherProfile(prof as Profile | null);
-      setCanChat(!!interest);
+      const interests = (interestData as Interest[]) || [];
+      const sentInterest = interests.find((item) => item.sender_id === currentUser.id) || null;
+      const receivedInterest = interests.find((item) => item.sender_id === otherUserId) || null;
+      const nextRelationStatus = getProfileRelationStatus({
+        sentInterest,
+        receivedInterest,
+        blocked: isBlockRelation(otherUserId),
+      });
+      setRelationStatus(nextRelationStatus);
+      setCanChat(nextRelationStatus === "accepted");
 
-      if (interest) {
+      if (nextRelationStatus === "accepted") {
         const { data: msgs } = await supabase
           .from("messages")
           .select("*")
@@ -97,7 +102,7 @@ export default function Chat() {
     return () => {
       setActiveChatUser(null);
     };
-  }, [otherUserId, currentUser, fetchBlocks, setActiveChatUser]);
+  }, [otherUserId, currentUser, fetchBlocks, isBlockRelation, setActiveChatUser]);
 
   // Real-time WebSocket channel via Supabase Broadcast
   useEffect(() => {
@@ -215,13 +220,47 @@ export default function Chat() {
     return date;
   };
 
+  const lockedChatCopy = (() => {
+    const name = otherProfile?.name || "this member";
+    if (relationStatus === "received_pending") {
+      return {
+        title: "Interest Waiting",
+        description: `${name} sent you an interest. Accept it to unlock chat.`,
+        action: "Review Interest",
+        path: "/interests",
+      };
+    }
+    if (relationStatus === "sent_pending") {
+      return {
+        title: "Waiting for Acceptance",
+        description: `You can chat after ${name} accepts your interest.`,
+        action: "View Profile",
+        path: `/user/${otherUserId}`,
+      };
+    }
+    if (relationStatus === "rejected") {
+      return {
+        title: "Chat Unavailable",
+        description: "This conversation is closed because the interest was declined.",
+        action: "Browse Matches",
+        path: "/browse",
+      };
+    }
+    return {
+      title: "Send Interest First",
+      description: `Start by sending interest to ${name}. Chat unlocks after it is accepted.`,
+      action: "View Profile",
+      path: `/user/${otherUserId}`,
+    };
+  })();
+
   return (
     <Layout>
       <div className="flex h-full min-h-0 bg-[linear-gradient(135deg,hsl(var(--secondary)/0.55),hsl(var(--accent)/0.38),hsl(var(--background)))] p-2 sm:p-3">
         <div className="flex min-h-0 w-full overflow-hidden rounded-[24px] border border-border/70 bg-card shadow-[0_18px_45px_rgba(70,15,38,0.10)]">
           <ChatConversationPanel
             activeUserId={otherUserId}
-            onSelect={(userId) => setLocation(`/chat/${userId}`)}
+            onSelect={(userId) => navigate(`/chat/${userId}`)}
             className="hidden border-r border-border/70 md:flex"
           />
 
@@ -231,7 +270,7 @@ export default function Chat() {
               variant="ghost"
               size="icon"
               className="shrink-0 rounded-full md:hidden"
-              onClick={() => setLocation("/chat")}
+              onClick={() => navigate("/chat")}
               data-testid="button-back-chat"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -272,29 +311,6 @@ export default function Chat() {
               </div>
             )}
 
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                className="hidden h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground sm:inline-flex"
-                aria-label="Favorite chat"
-              >
-                <Star className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className="hidden h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground sm:inline-flex"
-                aria-label="Search chat"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground"
-                aria-label="Chat menu"
-              >
-                <MoreVertical className="h-4 w-4" />
-              </button>
-            </div>
           </div>
 
           {!loading && isUserBlocked ? (
@@ -304,19 +320,19 @@ export default function Chat() {
               <p className="max-w-xs text-sm text-muted-foreground">
                 Messaging is not available due to a block between you and this user.
               </p>
-              <Button variant="outline" onClick={() => setLocation("/chat")}>
+              <Button variant="outline" onClick={() => navigate("/chat")}>
                 Back to Messages
               </Button>
             </div>
           ) : !loading && !canChat ? (
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
               <Lock className="h-12 w-12 text-muted-foreground/30" />
-              <h3 className="font-medium text-foreground">Chat Locked</h3>
+              <h3 className="font-medium text-foreground">{lockedChatCopy.title}</h3>
               <p className="max-w-xs text-sm text-muted-foreground">
-                You can only chat after an interest is accepted between you.
+                {lockedChatCopy.description}
               </p>
-              <Button variant="outline" onClick={() => setLocation("/interests")}>
-                Go to Interests
+              <Button variant="outline" onClick={() => navigate(lockedChatCopy.path)}>
+                {lockedChatCopy.action}
               </Button>
             </div>
           ) : (
@@ -396,13 +412,6 @@ export default function Chat() {
                   className="shrink-0 border-t border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)),hsl(var(--secondary)/0.55))] px-3 py-3 sm:px-5"
                 >
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary hover:bg-primary/10"
-                      aria-label="Add reaction"
-                    >
-                      <Smile className="h-5 w-5" />
-                    </button>
                     <div className="relative min-w-0 flex-1">
                       <Input
                         value={newMessage}
@@ -423,27 +432,6 @@ export default function Chat() {
                         <Send className="h-4 w-4" />
                       </Button>
                     </div>
-                    <button
-                      type="button"
-                      className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary hover:bg-primary/10 sm:inline-flex"
-                      aria-label="Add attachment"
-                    >
-                      <Plus className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary hover:bg-primary/10 sm:inline-flex"
-                      aria-label="Record voice message"
-                    >
-                      <Mic className="h-5 w-5" />
-                    </button>
-                    <button
-                      type="button"
-                      className="hidden h-10 w-10 shrink-0 items-center justify-center rounded-full text-primary hover:bg-primary/10 sm:inline-flex"
-                      aria-label="Send quick like"
-                    >
-                      <ThumbsUp className="h-5 w-5" />
-                    </button>
                   </div>
                 </form>
               )}

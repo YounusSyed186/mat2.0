@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/context/AuthContext';
 import { useBlockStore } from '@/stores/useBlockStore';
@@ -24,7 +24,7 @@ export function BlockedUsersList() {
   const { currentUser } = useAuth();
   const { blocks, fetchBlocks, unblockUser } = useBlockStore();
   const { toast } = useToast();
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [unblockTarget, setUnblockTarget] = useState<BlockedUser | null>(null);
@@ -145,13 +145,13 @@ export function BlockedUsersList() {
                   className="flex items-center gap-3 py-2 px-1 rounded-md hover:bg-muted/50 transition-colors"
                   data-testid={`blocked-user-${p.id}`}
                 >
-                  <div className="cursor-pointer" onClick={() => setLocation(`/user/${p.id}`)}>
+                  <div className="cursor-pointer" onClick={() => navigate(`/user/${p.id}`)}>
                     <UserAvatar name={p.name} avatarUrl={p.avatar_url} size="sm" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
                       className="text-sm font-medium text-foreground hover:text-primary cursor-pointer transition-colors truncate"
-                      onClick={() => setLocation(`/user/${p.id}`)}
+                      onClick={() => navigate(`/user/${p.id}`)}
                     >
                       {p.name}
                     </p>

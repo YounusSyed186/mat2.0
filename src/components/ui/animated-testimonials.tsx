@@ -1,7 +1,7 @@
 "use client";
 
 import { IconArrowLeft, IconArrowRight, IconUser } from "@tabler/icons-react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 
 import { useEffect, useState } from "react";
@@ -81,7 +81,7 @@ export const AnimatedTestimonials = ({
             {current.id && (
               <div className="mt-8">
                 <Button asChild className="pressable gap-2 rounded-full shadow-md">
-                  <Link href={`/user/${current.id}`}>
+                  <Link to={`/user/${current.id}`}>
                     <IconUser className="w-4 h-4" /> View Full Profile
                   </Link>
                 </Button>

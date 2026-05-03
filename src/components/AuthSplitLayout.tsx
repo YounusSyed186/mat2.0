@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, HeartHandshake, ShieldCheck, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -130,7 +130,7 @@ export function AuthSplitLayout({
               <p className="text-sm font-bold tracking-wide">{visualKicker}</p>
               <div className="flex items-center gap-3 text-xs font-semibold">
                 {actionHref && actionLabel && (
-                  <Link href={actionHref} className="text-white/82 transition-colors hover:text-white">
+                  <Link to={actionHref} className="text-white/82 transition-colors hover:text-white">
                     {actionLabel}
                   </Link>
                 )}
@@ -141,7 +141,7 @@ export function AuthSplitLayout({
                     size="sm"
                     className="rounded-full border-white/70 bg-white/8 px-5 text-white shadow-none backdrop-blur hover:bg-white/14"
                   >
-                    <Link href={actionHref}>{actionButtonLabel ?? actionLabel}</Link>
+                    <Link to={actionHref}>{actionButtonLabel ?? actionLabel}</Link>
                   </Button>
                 )}
               </div>
@@ -233,7 +233,7 @@ export function AuthSplitLayout({
           </div>
 
           <header className="flex shrink-0 items-center justify-between gap-4 px-6 py-5 sm:px-10 lg:px-12">
-            <Link href="/" className="flex min-w-0 items-center gap-3">
+            <Link to="/" className="flex min-w-0 items-center gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-sm ring-1 ring-black/5">
                 <img
                   src={logoSrc}
@@ -247,7 +247,7 @@ export function AuthSplitLayout({
 
             {actionHref && actionLabel && (
               <Button asChild variant="outline" size="sm" className="rounded-full px-4 shadow-none">
-                <Link href={actionHref}>{actionLabel}</Link>
+                <Link to={actionHref}>{actionLabel}</Link>
               </Button>
             )}
           </header>

@@ -24,7 +24,7 @@ import { generateEmbedding, generateMatchExplanation, parseSearchFilters } from 
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import type { Profile } from "@/types";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 import { useAiAccess } from "@/hooks/useAiAccess";
 import { Badge } from "@/components/ui/badge";
 import { useAiStore } from "@/stores/useAiStore";
@@ -185,7 +185,7 @@ export default function AiMatch() {
               Unlock natural-language matching for lifestyle, values, profession, and long-term compatibility.
             </p>
             <Button asChild size="lg" className="mt-6 h-12 rounded-full px-7">
-              <Link href="/subscriptions">
+              <Link to="/subscriptions">
                 <Crown className="h-5 w-5" />
                 Upgrade to Premium
               </Link>

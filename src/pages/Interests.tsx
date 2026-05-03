@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useLocation } from "wouter";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
 import { useBlockStore } from "@/stores/useBlockStore";
@@ -8,7 +8,7 @@ import type { Interest, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { UserAvatar } from "@/components/UserAvatar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeProps } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +21,6 @@ import {
   Filter,
   Search,
   ArrowLeft,
-  Bell,
   UserPlus,
   Users
 } from "lucide-react";
@@ -34,7 +33,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 // Types for enhanced features
 type InterestFilter = "all" | "pending" | "accepted" | "rejected";
@@ -45,7 +43,7 @@ interface InterestWithProfile extends Interest {
 }
 
 export default function Interests() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { currentUser, profile: myProfile } = useAuth();
   const { toast } = useToast();
   const { isBlockRelation, fetchBlocks } = useBlockStore();
@@ -57,8 +55,6 @@ export default function Interests() {
   const [filter, setFilter] = useState<InterestFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTab, setSelectedTab] = useState<"received" | "sent">("received");
-  const [bulkAction, setBulkAction] = useState<string[]>([]);
-  const [realtimeEnabled, setRealtimeEnabled] = useState(true);
 
   // Fetch blocked users on mount
   useEffect(() => {
@@ -101,9 +97,8 @@ export default function Interests() {
     }
   }, [currentUser, toast]);
 
-  // Realtime subscription for interests
   useEffect(() => {
-    if (!currentUser || !realtimeEnabled) return;
+    if (!currentUser) return;
 
     let refreshTimer: ReturnType<typeof window.setTimeout> | undefined;
     const queueRefresh = () => {
@@ -141,7 +136,7 @@ export default function Interests() {
       if (refreshTimer) window.clearTimeout(refreshTimer);
       supabase.removeChannel(channel);
     };
-  }, [currentUser, fetchInterests, realtimeEnabled]);
+  }, [currentUser, fetchInterests]);
 
   useEffect(() => {
     fetchInterests();
@@ -183,35 +178,6 @@ export default function Interests() {
     return true;
   }, [currentUser, myProfile, toast, createNotification, fetchInterests]);
 
-  // Bulk action handlers
-  const handleBulkAccept = useCallback(async () => {
-    const promises = bulkAction.map(async (interestId) => {
-      const interest = received.find(i => i.id === interestId);
-      if (interest && interest.status === "pending") {
-        return handleUpdateStatus(interestId, "accepted", interest.sender_id, interest.sender?.name);
-      }
-      return false;
-    });
-
-    await Promise.all(promises);
-    setBulkAction([]);
-    toast({ title: "Success", description: `Accepted ${promises.length} interests` });
-  }, [bulkAction, received, handleUpdateStatus, toast]);
-
-  const handleBulkReject = useCallback(async () => {
-    const promises = bulkAction.map(async (interestId) => {
-      const interest = received.find(i => i.id === interestId);
-      if (interest && interest.status === "pending") {
-        return handleUpdateStatus(interestId, "rejected", interest.sender_id);
-      }
-      return false;
-    });
-
-    await Promise.all(promises);
-    setBulkAction([]);
-    toast({ title: "Success", description: `Rejected ${promises.length} interests` });
-  }, [bulkAction, received, handleUpdateStatus, toast]);
-
   // Filter and search logic
   const filterInterests = useCallback((interests: InterestWithProfile[]) => {
     let filtered = [...interests];
@@ -237,6 +203,19 @@ export default function Interests() {
       return person && !isBlockRelation(person.id);
     });
 
+    const statusPriority: Record<InterestFilter, number> = {
+      pending: 0,
+      accepted: 1,
+      rejected: 2,
+      all: 3,
+    };
+
+    filtered.sort((a, b) => {
+      const statusDiff = statusPriority[a.status] - statusPriority[b.status];
+      if (statusDiff !== 0) return statusDiff;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
     return filtered;
   }, [filter, searchQuery, isBlockRelation]);
 
@@ -260,17 +239,22 @@ export default function Interests() {
     [received]
   );
 
-  const statusBadge = (status: string) => {
-    const config = {
+  const statusBadge = (status: Interest["status"]) => {
+    const config: Record<Interest["status"], {
+      variant: BadgeProps["variant"];
+      className: string;
+      icon: typeof Clock;
+      text: string;
+    }> = {
       pending: { variant: "secondary", className: "bg-amber-100 text-amber-700 border-amber-200", icon: Clock, text: "Pending" },
       accepted: { variant: "default", className: "bg-green-100 text-green-700 border-green-200", icon: Check, text: "Accepted" },
       rejected: { variant: "outline", className: "text-muted-foreground", icon: X, text: "Rejected" }
     };
 
-    const { variant, className, icon: Icon, text } = config[status as keyof typeof config] || config.pending;
+    const { variant, className, icon: Icon, text } = config[status];
 
     return (
-      <Badge variant={variant as any} className={`${className} text-xs`}>
+      <Badge variant={variant} className={`${className} text-xs`}>
         <Icon className="h-3 w-3 mr-1" />
         {text}
       </Badge>
@@ -281,39 +265,17 @@ export default function Interests() {
     const person = type === "received" ? interest.sender : interest.receiver;
     if (!person) return null;
 
-    const isSelected = bulkAction.includes(interest.id);
-    const isPending = interest.status === "pending";
-
     return (
       <div className="animate-soft-enter">
         <Card
-          className={`interactive-surface border-card-border shadow-sm ${
-            isSelected ? "ring-2 ring-primary" : ""
-          }`}
+          className="interactive-surface border-card-border shadow-sm"
           data-testid={`card-interest-${interest.id}`}
         >
           <CardContent className="pt-4">
             <div className="flex items-start gap-4">
-              {type === "received" && isPending && (
-                <div className="flex-shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={isSelected}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setBulkAction([...bulkAction, interest.id]);
-                      } else {
-                        setBulkAction(bulkAction.filter(id => id !== interest.id));
-                      }
-                    }}
-                    className="mt-2 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                  />
-                </div>
-              )}
-
               <div
                 className="cursor-pointer flex-shrink-0"
-                onClick={() => setLocation(`/user/${person.id}`)}
+                onClick={() => navigate(`/user/${person.id}`)}
               >
                 <UserAvatar
                   name={person.name}
@@ -328,7 +290,7 @@ export default function Interests() {
                   <div>
                     <h3
                       className="font-medium text-foreground hover:text-primary cursor-pointer transition-colors"
-                      onClick={() => setLocation(`/user/${person.id}`)}
+                      onClick={() => navigate(`/user/${person.id}`)}
                     >
                       {person.name}
                     </h3>
@@ -372,7 +334,7 @@ export default function Interests() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => setLocation(`/chat/${person.id}`)}
+                      onClick={() => navigate(`/chat/${person.id}`)}
                       data-testid={`button-chat-${interest.id}`}
                       className="border-primary/30 hover:bg-primary/10"
                     >
@@ -384,7 +346,7 @@ export default function Interests() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => setLocation(`/user/${person.id}`)}
+                    onClick={() => navigate(`/user/${person.id}`)}
                   >
                     <UserPlus className="h-3.5 w-3.5 mr-1" />
                     View Profile
@@ -455,7 +417,7 @@ export default function Interests() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setLocation("/")}
+            onClick={() => navigate("/browse")}
             className="lg:hidden"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -468,49 +430,16 @@ export default function Interests() {
               Manage your connections and chat requests
             </p>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setRealtimeEnabled(!realtimeEnabled)}
-            className="text-muted-foreground"
-          >
-            <Bell className={`h-4 w-4 ${realtimeEnabled ? "text-primary" : ""}`} />
-          </Button>
         </div>
 
         {/* Stats Overview */}
         {!loading && received.length > 0 && <StatsBar />}
-
-        {/* Bulk Actions */}
-        {bulkAction.length > 0 && (
-          <Alert className="mb-4 border-primary/30 bg-primary/5">
-            <AlertDescription className="flex items-center justify-between">
-              <span className="text-sm font-medium">
-                {bulkAction.length} interest{bulkAction.length !== 1 ? 's' : ''} selected
-              </span>
-              <div className="flex gap-2">
-                <Button size="sm" onClick={handleBulkAccept} variant="default">
-                  <Check className="h-3.5 w-3.5 mr-1" />
-                  Accept All
-                </Button>
-                <Button size="sm" onClick={handleBulkReject} variant="outline">
-                  <X className="h-3.5 w-3.5 mr-1" />
-                  Reject All
-                </Button>
-                <Button size="sm" onClick={() => setBulkAction([])} variant="ghost">
-                  Cancel
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
 
         <Tabs
           defaultValue="received"
           value={selectedTab}
           onValueChange={(v) => {
             setSelectedTab(v as "received" | "sent");
-            setBulkAction([]);
             setFilter("all");
           }}
         >
@@ -596,7 +525,7 @@ export default function Interests() {
                 }
                 action={
                   !searchQuery && filter === "all" && received.length === 0
-                    ? { label: "Browse Profiles", onClick: () => setLocation("/browse") }
+                    ? { label: "Browse Profiles", onClick: () => navigate("/browse") }
                     : undefined
                 }
               />
@@ -644,7 +573,7 @@ export default function Interests() {
                 }
                 action={
                   !searchQuery && filter === "all" && sent.length === 0
-                    ? { label: "Find Matches", onClick: () => setLocation("/browse") }
+                    ? { label: "Find Matches", onClick: () => navigate("/browse") }
                     : undefined
                 }
               />

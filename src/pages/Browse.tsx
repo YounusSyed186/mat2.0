@@ -1,9 +1,10 @@
-import { lazy, Suspense, useState, useEffect, useCallback, useMemo } from "react";
-import { Link } from "wouter";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
 import { useBlockStore } from "@/stores/useBlockStore";
-import type { Profile } from "@/types";
+import { useNotificationStore } from "@/stores/useNotificationStore";
+import type { Interest, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { ProfileCard } from "@/components/ProfileCard";
 import { PaginationControls } from "@/components/PaginationControls";
@@ -11,32 +12,31 @@ import { UserAvatar } from "@/components/UserAvatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
+  buildProfileRelationMap,
+  getMatchReasons,
+  getProfileCompletion,
+  type ProfileRelationStatus,
+} from "@/lib/profileJourney";
+import {
   AlertCircle,
   ArrowRight,
   Filter,
-  Heart,
-  MapPin,
   MessageCircle,
   RefreshCw,
   Search,
   SlidersHorizontal,
   Sparkles,
-  Star,
   Users,
   X,
   ChevronDown,
   ChevronUp,
-  Download,
   Zap,
-  Shield,
-  Eye,
-  Award,
   User,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -48,13 +48,21 @@ const EDUCATION_LEVELS = ["High School", "Bachelor's", "Master's", "PhD", "Profe
 const PAGE_SIZE = 12;
 const DEBOUNCE_DELAY = 300;
 
-const BrowseInsightsCharts = lazy(() => import("@/components/BrowseInsightsCharts"));
+type BrowseFilters = {
+  gender: string;
+  minAge: string;
+  maxAge: string;
+  city: string;
+  religion: string;
+  profession: string;
+  education: string;
+};
 
 // Utility functions
 const normalized = (value?: string | null) => value?.trim().toLowerCase() || "";
 const sameValue = (a?: string | null, b?: string | null) => Boolean(normalized(a) && normalized(a) === normalized(b));
-const percent = (value: number, total: number) => total ? Math.round((value / total) * 100) : 0;
-const monthKey = (date: Date) => `${date.getFullYear()}-${date.getMonth()}`;
+const errorMessage = (err: unknown, fallback: string) =>
+  err instanceof Error ? err.message : fallback;
 
 // Custom hooks
 const useDebouncedValue = <T,>(value: T, delay: number): T => {
@@ -68,26 +76,10 @@ const useDebouncedValue = <T,>(value: T, delay: number): T => {
   return debouncedValue;
 };
 
-const ChartSkeleton = () => (
-  <div className="grid gap-6 lg:grid-cols-2">
-    {[0, 1].map((item) => (
-      <Card key={item}>
-        <CardHeader>
-          <Skeleton className="h-4 w-32" />
-          <Skeleton className="h-3 w-48" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[250px] w-full" />
-        </CardContent>
-      </Card>
-    ))}
-  </div>
-);
-
 // Filter component
 interface FilterSectionProps {
-  filters: any;
-  onFilterChange: (filters: any) => void;
+  filters: BrowseFilters;
+  onFilterChange: (filters: Partial<BrowseFilters>) => void;
   onReset: () => void;
   smartSort: boolean;
   onSmartSortChange: (value: boolean) => void;
@@ -252,39 +244,14 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   );
 };
 
-// Stats card component
-interface StatCardProps {
-  label: string;
-  value: string | number;
-  note: string;
-  icon: React.ElementType;
-  tone: string;
-  loading: boolean;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ label, value, note, icon: Icon, tone, loading }) => (
-  <Card className="interactive-surface border-card-border bg-card shadow-sm">
-    <CardContent className="p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-          <p className="mt-2 text-2xl font-bold">{loading ? "..." : value}</p>
-          <p className="mt-1 truncate text-xs text-muted-foreground">{note}</p>
-        </div>
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${tone}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-);
-
 // Main component
 export default function Browse() {
   const { currentUser, profile: myProfile } = useAuth();
   const { blocks, fetchBlocks } = useBlockStore();
+  const { createNotification } = useNotificationStore();
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [profileRelations, setProfileRelations] = useState<Record<string, ProfileRelationStatus>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -293,9 +260,9 @@ export default function Browse() {
   const [totalCount, setTotalCount] = useState(0);
   const [selectedView, setSelectedView] = useState<"grid" | "list">("grid");
   const [savedProfiles, setSavedProfiles] = useState<Set<string>>(new Set());
-  const [renderCharts, setRenderCharts] = useState(false);
+  const [sendingInterestId, setSendingInterestId] = useState<string | null>(null);
 
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<BrowseFilters>({
     gender: "",
     minAge: "",
     maxAge: "",
@@ -307,11 +274,6 @@ export default function Browse() {
 
   const debouncedFilters = useDebouncedValue(filters, DEBOUNCE_DELAY);
 
-  useEffect(() => {
-    const chartTimer = window.setTimeout(() => setRenderCharts(true), 150);
-    return () => window.clearTimeout(chartTimer);
-  }, []);
-
   const preferredGender = useMemo(() => {
     if (myProfile?.gender === "male") return "female";
     if (myProfile?.gender === "female") return "male";
@@ -319,7 +281,6 @@ export default function Browse() {
   }, [myProfile?.gender]);
 
   const preferredProfession = myProfile?.profession || "";
-  const preferredEducation = myProfile?.education || "";
   const preferredAge = myProfile?.age || 30;
 
   useEffect(() => {
@@ -434,10 +395,22 @@ export default function Browse() {
 
         setProfiles(result);
         if (count !== null) setTotalCount(count);
+
+        const { data: interestData } = await supabase
+          .from("interests")
+          .select("*")
+          .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id}`);
+
+        setProfileRelations(buildProfileRelationMap({
+          currentUserId: currentUser.id,
+          profiles: result,
+          interests: (interestData as Interest[]) || [],
+          blocks,
+        }));
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Fetch profiles error:", err);
-      setError(err.message || "Failed to load profiles");
+      setError(errorMessage(err, "Failed to load profiles"));
       toast.error("Error loading profiles. Please try again.");
     } finally {
       setLoading(false);
@@ -460,94 +433,59 @@ export default function Browse() {
   };
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
+  const profileCompletion = getProfileCompletion(myProfile);
+  const highCompatibilityCount = useMemo(
+    () => profiles.filter((profile) => getMatchReasons(profile, myProfile).length >= 2).length,
+    [profiles, myProfile]
+  );
+  const activeFilterCount = Object.values(filters).filter((value) => value && value !== "all").length;
+  const activeFilterChips = useMemo(() => {
+    const chips: string[] = [];
+    if (preferredGender && !filters.gender) chips.push(`Showing ${preferredGender} profiles`);
+    if (smartSort) chips.push("Smart sort on");
+    if (filters.gender) chips.push(`Gender: ${filters.gender}`);
+    if (filters.minAge || filters.maxAge) {
+      chips.push(`Age: ${filters.minAge || "18"}-${filters.maxAge || "100"}`);
+    }
+    if (filters.city) chips.push(`City: ${filters.city}`);
+    if (filters.religion) chips.push(`Religion: ${filters.religion}`);
+    if (filters.profession) chips.push(`Profession: ${filters.profession}`);
+    if (filters.education) chips.push(`Education: ${filters.education}`);
+    return chips;
+  }, [filters, preferredGender, smartSort]);
 
-  // Enhanced dashboard calculations
-  const dashboard = useMemo(() => {
-    const localProfiles = profiles.filter((p) => sameValue(p.city, myProfile?.city));
-    const sharedReligion = profiles.filter((p) => p.religion && p.religion === myProfile?.religion);
-    const completeProfiles = profiles.filter((p) => p.bio && p.profession && p.education);
-    const averageAge = profiles.length
-      ? Math.round(profiles.reduce((sum, profile) => sum + (profile.age || 0), 0) / profiles.length)
-      : 0;
-    const recentProfiles = profiles.filter((p) => {
-      const created = new Date(p.created_at).getTime();
-      return Number.isFinite(created) && Date.now() - created < 1000 * 60 * 60 * 24 * 30;
-    });
+  const handleSendInterest = useCallback(async (profileId: string) => {
+    if (!currentUser) return;
+    const targetProfile = profiles.find((profile) => profile.id === profileId);
+    if (!targetProfile) return;
 
-    // Compatibility score
-    const highCompatibility = profiles.filter((p) => {
-      let score = 0;
-      if (sameValue(p.city, myProfile?.city)) score += 30;
-      if (p.religion === myProfile?.religion) score += 30;
-      if (preferredProfession && p.profession === preferredProfession) score += 20;
-      if (preferredEducation && p.education === preferredEducation) score += 20;
-      return score >= 70;
-    }).length;
+    setSendingInterestId(profileId);
+    try {
+      const { error: insertError } = await supabase
+        .from("interests")
+        .insert({ sender_id: currentUser.id, receiver_id: profileId, status: "pending" })
+        .select()
+        .maybeSingle();
 
-    return {
-      visible: profiles.length,
-      total: totalCount,
-      local: localProfiles.length,
-      sharedReligion: sharedReligion.length,
-      complete: completeProfiles.length,
-      averageAge,
-      recent: recentProfiles.length,
-      highCompatibility,
-      localPercent: percent(localProfiles.length, profiles.length),
-      faithPercent: percent(sharedReligion.length, profiles.length),
-      completePercent: percent(completeProfiles.length, profiles.length),
-      compatibilityPercent: percent(highCompatibility, profiles.length),
-    };
-  }, [profiles, myProfile, totalCount, preferredProfession, preferredEducation]);
+      if (insertError) throw insertError;
 
-  const stats = useMemo(() => [
-    { label: "Visible Matches", value: loading ? "..." : dashboard.visible, note: `${dashboard.total} total profiles`, icon: Users, tone: "bg-gradient-to-br from-rose-100 to-rose-200 text-rose-700" },
-    { label: "Nearby", value: loading ? "..." : dashboard.local, note: `${dashboard.localPercent}% in your city`, icon: MapPin, tone: "bg-gradient-to-br from-teal-100 to-teal-200 text-teal-700" },
-    { label: "Shared Faith", value: loading ? "..." : dashboard.sharedReligion, note: `${dashboard.faithPercent}% aligned`, icon: Heart, tone: "bg-gradient-to-br from-rose-100 to-rose-200 text-rose-700" },
-    { label: "High Match", value: loading ? "..." : dashboard.highCompatibility, note: `${dashboard.compatibilityPercent}% >70% match`, icon: Award, tone: "bg-gradient-to-br from-amber-100 to-amber-200 text-amber-700" },
-    { label: "Avg. Age", value: loading ? "..." : dashboard.averageAge || "-", note: `${dashboard.recent} joined recently`, icon: Star, tone: "bg-gradient-to-br from-violet-100 to-violet-200 text-violet-700" },
-  ], [dashboard, loading]);
-
-  // Enhanced chart data
-  const trendData = useMemo(() => {
-    const now = new Date();
-    return Array.from({ length: 6 }, (_, index) => {
-      const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
-      const count = profiles.filter((profile) => monthKey(new Date(profile.created_at)) === monthKey(date)).length;
-      return {
-        month: date.toLocaleDateString(undefined, { month: "short" }),
-        profiles: count,
-      };
-    });
-  }, [profiles]);
-
-  const signalData = useMemo(() => {
-    return [
-      { name: "Location", value: dashboard.localPercent || 42 },
-      { name: "Faith", value: dashboard.faithPercent || 58 },
-      { name: "Profession", value: percent(profiles.filter(p => preferredProfession && p.profession === preferredProfession).length, dashboard.visible) || 35 },
-      { name: "Profile", value: dashboard.completePercent || 73 },
-    ];
-  }, [dashboard, profiles, preferredProfession]);
-
-  const handleExport = useCallback(() => {
-    const data = profiles.map(p => ({
-      name: p.name,
-      age: p.age,
-      city: p.city,
-      religion: p.religion,
-      profession: p.profession,
-      education: p.education,
-    }));
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `profiles_${new Date().toISOString()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast.success("Profiles exported successfully");
-  }, [profiles]);
+      setProfileRelations((current) => ({
+        ...current,
+        [profileId]: "sent_pending",
+      }));
+      toast.success(`Interest sent to ${targetProfile.name}`);
+      await createNotification(
+        profileId,
+        "interest_received",
+        currentUser.id,
+        myProfile?.name || "Someone"
+      );
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Could not send interest. Please try again."));
+    } finally {
+      setSendingInterestId(null);
+    }
+  }, [createNotification, currentUser, myProfile?.name, profiles]);
 
   return (
     <Layout>
@@ -561,51 +499,41 @@ export default function Browse() {
                 Find your perfect connection based on compatibility and shared values
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => window.location.reload()} className="gap-2">
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </Button>
-            </div>
           </div>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
             {/* Main Content */}
             <div className="min-w-0 space-y-6">
               {/* Hero Card */}
-              <Card className="animate-soft-enter overflow-hidden border-0 bg-gradient-to-r from-primary to-primary/80 text-white shadow-lg">
-                <CardContent className="relative p-6 md:p-8">
+              <Card className="mobile-card-custom animate-soft-enter relative isolate overflow-hidden border-0 bg-gradient-to-r from-primary to-primary/80 text-white shadow-lg">
+                <CardContent className="relative p-4 sm:p-6 md:p-8">
                   <div className="relative z-10">
                     <Badge variant="secondary" className="mb-3 bg-white/20 text-white">
                       <Sparkles className="mr-1 h-3 w-3" />
                       Smart Matchmaking
                     </Badge>
-                    <h2 className="text-2xl font-bold md:text-3xl">
+                    <h2 className="text-xl font-bold leading-tight sm:text-2xl md:text-3xl">
                       {loading
                         ? "Finding your perfect matches..."
-                        : `${dashboard.visible} ${dashboard.visible === 1 ? "profile" : "profiles"} ready to connect`}
+                        : `${profiles.length} ${profiles.length === 1 ? "profile" : "profiles"} ready to review`}
                     </h2>
-                    <p className="mt-2 max-w-xl text-sm text-white/90">
-                      {dashboard.highCompatibility > 0
-                        ? `${dashboard.highCompatibility} high-compatibility matches found! We've prioritized profiles based on your preferences and lifestyle.`
-                        : "Our AI is analyzing compatibility factors to find your best matches."}
+                    <p className="mt-2 max-w-xl text-sm leading-relaxed text-white/90">
+                      {highCompatibilityCount > 0
+                        ? `${highCompatibilityCount} profiles have multiple signals in common with you. Send interest from a card when someone feels right.`
+                        : "Review suggested profiles, open the full profile, and send interest when you want to start the connection."}
                     </p>
-                    <div className="mt-4 flex flex-wrap gap-2">
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="pressable bg-white text-primary hover:bg-white/90"
+                        className="pressable w-full justify-center bg-white text-primary hover:bg-white/90 sm:w-auto"
                         onClick={() => setShowFilters(!showFilters)}
                       >
                         <Filter className="mr-2 h-4 w-4" />
                         Advanced Filters
                       </Button>
-                      <Button asChild size="sm" variant="ghost" className="pressable text-white hover:bg-white/20">
-                        <Link href="/ai-match">
+                      <Button asChild size="sm" variant="ghost" className="pressable w-full justify-center text-white hover:bg-white/20 sm:w-auto">
+                        <Link to="/ai-match">
                           AI Match Insights
                           <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
@@ -614,27 +542,24 @@ export default function Browse() {
                   </div>
 
                   {/* Decorative elements */}
-                  <div className="absolute bottom-0 right-0 opacity-20">
-                    <Users className="h-48 w-48" />
+                  <div className="pointer-events-none absolute -bottom-8 -right-8 opacity-10 sm:bottom-0 sm:right-0 sm:opacity-20">
+                    <Users className="h-32 w-32 sm:h-48 sm:w-48" />
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Stats Grid */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-                {stats.map((stat, index) => (
-                  <StatCard key={index} {...stat} loading={loading} />
+              <div className="flex flex-wrap gap-2">
+                {activeFilterChips.map((chip) => (
+                  <Badge key={chip} variant="secondary" className="rounded-full px-3 py-1">
+                    {chip}
+                  </Badge>
                 ))}
+                {activeFilterCount > 0 && (
+                  <Button variant="ghost" size="sm" onClick={resetFilters} className="h-7 rounded-full px-3 text-xs">
+                    Clear filters
+                  </Button>
+                )}
               </div>
-
-              {/* Charts Section */}
-              {renderCharts ? (
-                <Suspense fallback={<ChartSkeleton />}>
-                  <BrowseInsightsCharts trendData={trendData} signalData={signalData} />
-                </Suspense>
-              ) : (
-                <ChartSkeleton />
-              )}
 
               {/* Filter Section */}
               {showFilters && (
@@ -759,7 +684,11 @@ export default function Browse() {
                           key={profile.id}
                           profile={profile}
                           isSaved={savedProfiles.has(profile.id)}
+                          relationStatus={profileRelations[profile.id] || "none"}
+                          matchReasons={getMatchReasons(profile, myProfile)}
+                          actionLoading={sendingInterestId === profile.id}
                           onSave={saveProfile}
+                          onSendInterest={handleSendInterest}
                         />
                       ))}
                     </div>
@@ -775,7 +704,7 @@ export default function Browse() {
             </div>
 
             {/* Sidebar */}
-            <aside className="space-y-6">
+            <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
               {/* Profile Summary */}
               <Card>
                 <CardContent className="p-5">
@@ -791,26 +720,26 @@ export default function Browse() {
                         <p className="text-xs text-muted-foreground">{myProfile.profession || "Member since 2024"}</p>
                         <div className="mt-2 flex gap-1">
                           <Badge variant="secondary" className="text-xs">
-                            {dashboard.completePercent}% Complete
+                            {profileCompletion}% Complete
                           </Badge>
                         </div>
                       </div>
 
                       <div className="mt-4 grid grid-cols-3 gap-2">
                         <Button asChild variant="outline" size="sm" className="gap-1">
-                          <Link href="/profile/edit">
+                          <Link to="/profile/edit">
                             <User className="h-3 w-3" />
                             Edit
                           </Link>
                         </Button>
                         <Button asChild variant="outline" size="sm" className="gap-1">
-                          <Link href="/chat">
+                          <Link to="/chat">
                             <MessageCircle className="h-3 w-3" />
                             Chat
                           </Link>
                         </Button>
                         <Button asChild variant="outline" size="sm" className="gap-1">
-                          <Link href="/ai-match">
+                          <Link to="/ai-match">
                             <Sparkles className="h-3 w-3" />
                             AI
                           </Link>
@@ -842,33 +771,6 @@ export default function Browse() {
                 </CardContent>
               </Card>
 
-              {/* Quick Actions */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm font-semibold">Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <Button variant="ghost" className="w-full justify-start gap-2" asChild>
-                    <Link href="/saved-profiles">
-                      <Heart className="h-4 w-4" />
-                      Saved Profiles ({savedProfiles.size})
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start gap-2" asChild>
-                    <Link href="/viewed-profiles">
-                      <Eye className="h-4 w-4" />
-                      Viewed Recently
-                    </Link>
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start gap-2" asChild>
-                    <Link href="/privacy-settings">
-                      <Shield className="h-4 w-4" />
-                      Privacy Settings
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-
               {/* Tips Card */}
               <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
                 <CardContent className="p-4">
@@ -877,11 +779,13 @@ export default function Browse() {
                     <div>
                       <h4 className="font-semibold text-sm">Pro Tip</h4>
                       <p className="mt-1 text-xs text-muted-foreground">
-                        Complete your profile to {dashboard.completePercent < 80 ? "increase matches by 3x" : "unlock premium features"}!
+                        {profileCompletion < 80
+                          ? "Complete your profile before sending more interests. Better details make replies easier."
+                          : "Your profile has enough detail for better match suggestions."}
                       </p>
-                      {dashboard.completePercent < 80 && (
+                      {profileCompletion < 80 && (
                         <Button size="sm" variant="link" className="mt-2 h-auto p-0 text-xs" asChild>
-                          <Link href="/profile/edit">Complete Profile →</Link>
+                          <Link to="/profile/edit">Complete Profile</Link>
                         </Button>
                       )}
                     </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
 import { AuthSplitLayout } from "@/components/AuthSplitLayout";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Login() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,7 +24,7 @@ export default function Login() {
     if (error) {
       toast({ title: "Login failed", description: error.message, variant: "destructive" });
     } else {
-      setLocation("/browse");
+      navigate("/browse");
     }
     setLoading(false);
   };
@@ -141,14 +141,13 @@ export default function Login() {
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
         Don't have an account?{" "}
-        <a
-          href="/signup"
+        <Link
+          to="/signup"
           className="font-semibold text-primary hover:underline"
-          onClick={(e) => { e.preventDefault(); setLocation("/signup"); }}
           data-testid="link-signup"
         >
           Sign up
-        </a>
+        </Link>
       </p>
     </AuthSplitLayout>
   );
