@@ -276,13 +276,13 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   return (
-    <div className="mobile-app-shell relative h-[100dvh] overflow-hidden bg-[#f7e8f0] p-2 text-foreground dark:bg-[#150b10] sm:p-3 md:bg-[#080606] md:px-[0.5vw] md:py-[0.5dvh] md:dark:bg-[#080606]">
+    <div className="mobile-app-shell relative h-[100dvh] overflow-hidden bg-[#fff9fc] p-0 text-foreground dark:bg-[#211219] md:bg-[#080606] md:px-[0.5vw] md:py-[0.5dvh] md:dark:bg-[#080606]">
       <div className="pointer-events-none fixed inset-0 hidden opacity-95 md:block">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(236,72,153,0.15),transparent_40%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(236,72,153,0.08)_0,transparent_42%,rgba(97,18,50,0.12)_100%)]" />
       </div>
 
-      <div className="relative mx-auto flex h-full w-full max-w-[430px] overflow-hidden rounded-[30px] bg-[#fff9fc] shadow-[0_26px_70px_rgba(173,38,95,0.18)] dark:bg-[#211219] dark:shadow-[0_26px_70px_rgba(0,0,0,0.38)] md:max-w-none md:rounded-[28px] md:bg-background md:shadow-xl md:dark:bg-background">
+      <div className="relative mx-auto flex h-full w-full max-w-none overflow-hidden rounded-none bg-[#fff9fc] shadow-none dark:bg-[#211219] md:rounded-[28px] md:bg-background md:shadow-xl md:dark:bg-background">
         {/* Desktop Sidebar */}
         <aside
           className={cn(
@@ -384,7 +384,7 @@ export function Layout({ children }: LayoutProps) {
         </aside>
 
         {/* Main Content Area */}
-        <section className="relative m-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[30px] bg-[#fff9fc] dark:bg-[#211219] md:m-2 md:ml-2 md:rounded-[22px] md:bg-background/70 md:dark:bg-background/70">
+        <section className="relative m-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-[#fff9fc] dark:bg-[#211219] md:m-2 md:ml-2 md:rounded-[22px] md:bg-background/70 md:dark:bg-background/70">
           {/* Mobile Header */}
           <div
             className={cn(
@@ -458,7 +458,7 @@ export function Layout({ children }: LayoutProps) {
               showMobileBottomNav && "pb-[88px] md:pb-0"
             )}
           >
-            <div className="container mx-auto h-full p-0 md:p-6">
+            <div className="h-full w-full p-0 md:p-6">
               {children}
             </div>
           </main>

@@ -9,8 +9,8 @@ export default function ChatList() {
 
   return (
     <Layout>
-      <div className="flex h-full min-h-0 bg-[linear-gradient(135deg,hsl(var(--secondary)/0.55),hsl(var(--accent)/0.38),hsl(var(--background)))] p-2 sm:p-3">
-        <div className="flex min-h-0 w-full overflow-hidden rounded-[24px] border border-border/70 bg-card shadow-[0_18px_45px_rgba(70,15,38,0.10)]">
+      <div className="flex h-full min-h-0 bg-background p-0 md:bg-[linear-gradient(135deg,hsl(var(--secondary)/0.55),hsl(var(--accent)/0.38),hsl(var(--background)))] md:p-3">
+        <div className="flex min-h-0 w-full overflow-hidden rounded-none border-0 bg-card shadow-none md:rounded-[24px] md:border md:border-border/70 md:shadow-[0_18px_45px_rgba(70,15,38,0.10)]">
           <ChatConversationPanel onSelect={(userId) => navigate(`/chat/${userId}`)} />
 
           <section className="hidden min-w-0 flex-1 flex-col bg-[linear-gradient(180deg,hsl(var(--secondary)/0.36),hsl(var(--accent)/0.24),hsl(var(--background)))] md:flex">

@@ -95,10 +95,10 @@ export function AuthSplitLayout({
   };
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-[#eeeeed] px-[0.5vw] py-[0.5dvh] text-foreground">
+    <div className="h-[100dvh] overflow-hidden bg-card p-0 text-foreground lg:bg-[#eeeeed] lg:px-[0.5vw] lg:py-[0.5dvh]">
       <div
         className={cn(
-          "relative mx-auto grid h-full min-h-0 w-full max-w-none overflow-hidden rounded-[32px] bg-card shadow-[0_32px_90px_rgba(49,39,35,0.18)]",
+          "relative mx-auto grid h-full min-h-0 w-full max-w-none overflow-hidden rounded-none bg-card shadow-none lg:rounded-[32px] lg:shadow-[0_32px_90px_rgba(49,39,35,0.18)]",
           wide
             ? "lg:grid-cols-[minmax(360px,0.78fr)_minmax(0,1.22fr)]"
             : "lg:grid-cols-[minmax(0,1.02fr)_minmax(410px,0.98fr)]"
