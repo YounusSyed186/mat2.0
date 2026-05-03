@@ -22,37 +22,51 @@ export default function Subscription() {
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
     const fetchData = async () => {
       setLoading(true);
 
-      // Fetch active plans
-      const { data: plansData } = await supabase
-        .from("subscription_plans")
-        .select("*")
-        .eq("is_active", true)
-        .order("price_monthly", { ascending: true });
+      try {
+        const plansQuery = supabase
+          .from("subscription_plans")
+          .select("*")
+          .eq("is_active", true)
+          .order("price_monthly", { ascending: true });
 
-      if (plansData) setPlans(plansData as SubscriptionPlan[]);
+        const subscriptionQuery = currentUser
+          ? supabase
+              .from("user_subscriptions")
+              .select("*, plan:subscription_plans(*)")
+              .eq("user_id", currentUser.id)
+              .eq("status", "active")
+              .gte("end_date", new Date().toISOString())
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle()
+          : Promise.resolve({ data: null, error: null });
 
-      // Fetch user active subscription
-      if (currentUser) {
-        const { data: subData } = await supabase
-          .from("user_subscriptions")
-          .select("*, plan:subscription_plans(*)")
-          .eq("user_id", currentUser.id)
-          .eq("status", "active")
-          .gte("end_date", new Date().toISOString())
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        const [{ data: plansData }, { data: subData }] = await Promise.all([
+          plansQuery,
+          subscriptionQuery,
+        ]);
 
+        if (!isMounted) return;
+
+        if (plansData) setPlans(plansData as SubscriptionPlan[]);
         if (subData) setActiveSub(subData as UserSubscription);
+      } catch (err) {
+        console.error("Failed to load subscription data:", err);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-
-      setLoading(false);
     };
 
     fetchData();
+
+    return () => {
+      isMounted = false;
+    };
   }, [currentUser]);
 
   const handleSubscribe = async (plan: SubscriptionPlan) => {
@@ -229,10 +243,11 @@ export default function Subscription() {
               return (
                 <Card
                   key={plan.id}
-                  className={`relative flex flex-col ${isPopular
-                      ? 'border-primary shadow-lg scale-105 z-10'
+                  className={`interactive-surface animate-soft-enter relative flex flex-col ${isPopular
+                      ? 'z-10 border-primary shadow-md md:-translate-y-1'
                       : 'border-border'
                     }`}
+                  style={{ animationDelay: `${index * 45}ms` }}
                 >
                   {isPopular && (
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -283,7 +298,7 @@ export default function Subscription() {
                   </CardContent>
                   <CardFooter>
                     <Button
-                      className="w-full"
+                      className="pressable w-full"
                       variant={isPopular ? "default" : "outline"}
                       disabled={isCurrentPlan || isProcessing === plan.id}
                       onClick={() => handleSubscribe(plan)}

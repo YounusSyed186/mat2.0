@@ -3,16 +3,26 @@ import { BlockedUsersList } from "@/components/BlockedUsersList";
 import { useLocation } from "wouter";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/context/AuthContext";
+import { AuthSplitLayout } from "@/components/AuthSplitLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Layout } from "@/components/Layout";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Loader2, Sparkles } from "lucide-react";
+import {
+  Camera,
+  HeartHandshake,
+  Loader2,
+  LockKeyhole,
+  ShieldCheck,
+  SlidersHorizontal,
+  Sparkles,
+  UserCircle,
+} from "lucide-react";
 import { generateEmbedding } from "@/lib/ai";
+import { cn } from "@/lib/utils";
 
 interface ProfilePageProps {
   mode: "create" | "edit";
@@ -21,15 +31,47 @@ interface ProfilePageProps {
 const RELIGIONS = ["Hindu", "Muslim", "Christian", "Sikh", "Jain", "Buddhist", "Other"];
 const GENDERS = ["male", "female", "other"];
 
+type ProfileFormState = {
+  name: string;
+  age: string;
+  gender: string;
+  religion: string;
+  city: string;
+  education: string;
+  profession: string;
+  bio: string;
+  avatar_url: string;
+  languages: string[];
+  ethnicity: string;
+  willing_to_relocate: boolean;
+  introvert_extrovert: number;
+  hobbies: string[];
+  habits: string;
+  social_preferences: string;
+  career_ambition: string;
+  family_goals: string;
+  lifestyle_choices: string;
+  height: string;
+  fitness_level: string;
+  style: string;
+  skin_tone: string;
+  search_intent: string;
+  weight: string;
+  prompts: Record<string, string>;
+  voice_url: string;
+  video_url: string;
+};
+
 export default function ProfilePage({ mode }: ProfilePageProps) {
   const [, setLocation] = useLocation();
-  const { currentUser, profile } = useAuth();
+  const { currentUser, profile, refetchProfile } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState("profile-basics");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<ProfileFormState>({
     name: "",
     age: "",
     gender: "",
@@ -63,7 +105,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
 
   useEffect(() => {
     if (mode === "edit" && profile) {
-      setForm({
+      const nextForm: ProfileFormState = {
         name: profile.name || "",
         age: profile.age?.toString() || "",
         gender: profile.gender || "",
@@ -92,8 +134,13 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
         prompts: profile.prompts || {},
         voice_url: profile.voice_url || "",
         video_url: profile.video_url || "",
-      });
-      if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
+      };
+      const timeoutId = window.setTimeout(() => {
+        setForm(nextForm);
+        if (profile.avatar_url) setAvatarPreview(profile.avatar_url);
+      }, 0);
+
+      return () => window.clearTimeout(timeoutId);
     }
   }, [mode, profile]);
 
@@ -158,7 +205,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
     setLoading(true);
 
     // Step 1: Save core profile fields
-    const coreData = {
+    const coreData: Record<string, unknown> = {
       id: currentUser.id,
       name: form.name,
       age: parseInt(form.age),
@@ -212,12 +259,12 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
 
       const embedding = await generateEmbedding(profileText);
       if (embedding) {
-        (coreData as any).embedding = `[${embedding.join(",")}]`;
-        (coreData as any).needs_embedding = false;
+        coreData.embedding = `[${embedding.join(",")}]`;
+        coreData.needs_embedding = false;
       }
     } catch (embErr) {
       console.error("Failed to generate embedding during profile save:", embErr);
-      (coreData as any).needs_embedding = true;
+      coreData.needs_embedding = true;
     }
 
     const { error: coreError } = await supabase.from("profiles").upsert(coreData);
@@ -227,232 +274,274 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
       return;
     }
 
+    await refetchProfile();
     toast({ title: mode === "create" ? "Profile created!" : "Profile updated!" });
-    window.location.href = "/browse";
+    setLocation("/browse");
     setLoading(false);
   };
 
+  const handleRemovePhoto = () => {
+    setAvatarPreview(null);
+    setForm((prev) => ({ ...prev, avatar_url: "" }));
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const settingsSections = [
+    { id: "profile-basics", label: "Profile Settings", icon: UserCircle },
+    { id: "background", label: "Background", icon: ShieldCheck },
+    { id: "lifestyle", label: "Lifestyle", icon: Sparkles },
+    { id: "preferences", label: "Preferences", icon: HeartHandshake },
+    { id: "media", label: "Media", icon: SlidersHorizontal },
+    ...(mode === "edit" ? [{ id: "privacy", label: "Privacy", icon: LockKeyhole }] : []),
+  ];
+
+  const handleSectionChange = (sectionId: string) => {
+    setActiveSection(sectionId);
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
   const displayName = form.name || "You";
+  const isCreateMode = mode === "create";
 
   const content = (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h1 className="font-serif text-3xl font-bold text-foreground">
-            {mode === "create" ? "Create Your Profile" : "Edit Profile"}
-          </h1>
-          <p className="text-muted-foreground mt-1 text-lg">
-            {mode === "create"
-              ? "Tell us more about yourself to find your perfect match"
-              : "Keep your details up to date for better AI recommendations"}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button type="submit" form="profile-form" disabled={loading || uploadingPhoto} size="lg">
-            {loading ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</>
-            ) : (
-              mode === "create" ? "Create Profile" : "Save Changes"
-            )}
-          </Button>
-          {mode === "edit" && (
-            <Button type="button" variant="outline" size="lg" onClick={() => setLocation("/browse")}>
-              Cancel
-            </Button>
-          )}
-        </div>
-      </div>
-
-      <form id="profile-form" onSubmit={handleSubmit} className="space-y-8">
-        {/* Row 1: Photo & Basic Info */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card className="lg:col-span-1 border-card-border shadow-md h-fit">
-            <CardHeader>
-              <CardTitle className="text-lg">Profile Photo</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center py-6">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
+    <div
+      className={cn(
+        "min-h-full",
+        isCreateMode
+          ? "bg-transparent p-0"
+          : "bg-[linear-gradient(135deg,hsl(var(--secondary)/0.56),hsl(var(--accent)/0.34),hsl(var(--background)))] p-3 sm:p-4"
+      )}
+    >
+      <div
+        className={cn(
+          "mx-auto flex w-full flex-col gap-4 lg:items-start",
+          isCreateMode ? "max-w-none" : "max-w-[1180px] lg:flex-row"
+        )}
+      >
+        <aside className={cn("hidden w-[248px] shrink-0 overflow-hidden rounded-[24px] border border-border/70 bg-card/90 shadow-sm lg:sticky lg:top-4 lg:block", isCreateMode && "lg:hidden")}>
+          <div className="border-b border-border/70 px-5 py-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Account settings</p>
+            <h2 className="mt-1 text-lg font-bold text-foreground">{mode === "create" ? "Create profile" : "Edit profile"}</h2>
+          </div>
+          <nav className="space-y-1 p-3">
+            {settingsSections.map(({ id, label, icon: Icon }) => (
               <button
+                key={id}
                 type="button"
-                onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
-                disabled={uploadingPhoto}
-                className="relative group rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary h-40 w-40"
-              >
-                {avatarPreview ? (
-                  <img src={avatarPreview} alt={displayName} className="h-full w-full rounded-full object-cover border-4 border-primary/20 shadow-lg" />
-                ) : (
-                  <div className="h-full w-full rounded-full bg-primary/5 border-2 border-dashed border-primary/30 flex items-center justify-center text-primary font-serif font-bold text-5xl">
-                    {displayName.charAt(0).toUpperCase()}
-                  </div>
+                onClick={() => handleSectionChange(id)}
+                className={cn(
+                  "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-colors",
+                  activeSection === id
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-secondary hover:text-foreground"
                 )}
-                <div className={`absolute inset-0 rounded-full flex flex-col items-center justify-center transition-opacity ${uploadingPhoto ? "bg-black/50 opacity-100" : "bg-black/0 group-hover:bg-black/45 opacity-0 group-hover:opacity-100"}`}>
-                  {uploadingPhoto ? <Loader2 className="h-8 w-8 text-white animate-spin" /> : <><Camera className="h-7 w-7 text-white mb-1" /><span className="text-white text-xs font-medium">Change Photo</span></>}
-                </div>
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {label}
               </button>
-              <p className="text-xs text-muted-foreground mt-4 text-center">JPG, PNG or WebP · Max 5 MB</p>
-            </CardContent>
-          </Card>
+            ))}
+          </nav>
+        </aside>
 
-          <Card className="lg:col-span-2 border-card-border shadow-md">
-            <CardHeader>
-              <CardTitle className="text-lg">Basic Information</CardTitle>
-              <CardDescription>Required fields to get you started</CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Full Name *</Label>
-                <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="John Doe" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="age">Age *</Label>
-                <Input id="age" type="number" min={18} max={100} value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} required />
-              </div>
-              <div className="space-y-2">
-                <Label>Gender *</Label>
-                <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
-                  <SelectContent>
-                    {GENDERS.map((g) => <SelectItem key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Religion *</Label>
-                <Select value={form.religion} onValueChange={(v) => setForm({ ...form, religion: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select religion" /></SelectTrigger>
-                  <SelectContent>
-                    {RELIGIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="city">City *</Label>
-                <Input id="city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="e.g. Bangalore" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="profession">Profession</Label>
-                <Input id="profession" value={form.profession} onChange={(e) => setForm({ ...form, profession: e.target.value })} placeholder="e.g. Software Engineer" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className={isCreateMode ? "block" : "lg:hidden"}>
+          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-border/70 bg-card/90 p-2 shadow-sm">
+            {settingsSections.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => handleSectionChange(id)}
+                className={cn(
+                  "inline-flex shrink-0 items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-colors",
+                  activeSection === id ? "bg-primary text-primary-foreground" : "bg-secondary/60 text-muted-foreground"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Identity & Lifestyle */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Card className="border-card-border shadow-md">
-            <CardHeader><CardTitle className="text-lg">Identity & Background</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Languages Spoken (Comma separated)</Label>
-                <Input 
-                  value={form.languages.join(', ')} 
-                  onChange={(e) => setForm({ ...form, languages: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                  placeholder="English, Hindi, Kannada..." 
-                />
+        <form
+          id="profile-form"
+          onSubmit={handleSubmit}
+          className={cn(
+            "min-w-0 flex-1 overflow-hidden",
+            isCreateMode
+              ? "w-full rounded-none border-0 bg-transparent shadow-none"
+              : "rounded-[24px] border border-border/70 bg-card/90 shadow-sm"
+          )}
+        >
+          {!isCreateMode && (
+            <div className="flex flex-col gap-4 border-b border-border/70 bg-[linear-gradient(135deg,hsl(var(--card)),hsl(var(--accent)/0.54))] px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">Vivah profile</p>
+                <h1 className="mt-1 text-2xl font-bold text-foreground sm:text-3xl">
+                  Profile Settings
+                </h1>
+                <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+                  Keep your details up to date for better AI recommendations.
+                </p>
               </div>
-              <div className="space-y-2">
-                <Label>Ethnicity / Cultural Background</Label>
-                <Input value={form.ethnicity} onChange={(e) => setForm({ ...form, ethnicity: e.target.value })} placeholder="Optional" />
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" onClick={() => setLocation("/browse")}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading || uploadingPhoto}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
               </div>
-              <div className="flex items-center gap-2 pt-2">
-                <input 
-                  type="checkbox" 
-                  id="relocate" 
-                  checked={form.willing_to_relocate} 
-                  onChange={(e) => setForm({ ...form, willing_to_relocate: e.target.checked })}
-                  className="rounded border-gray-300 text-primary focus:ring-primary"
-                />
-                <Label htmlFor="relocate" className="text-sm cursor-pointer">Willing to relocate for the right match</Label>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          )}
 
-          <Card className="border-card-border shadow-md">
-            <CardHeader><CardTitle className="text-lg">Personality & Lifestyle</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <Label>Introvert vs Extrovert</Label>
-                  <span className="text-xs text-muted-foreground">{form.introvert_extrovert <= 3 ? 'Introvert' : form.introvert_extrovert >= 8 ? 'Extrovert' : 'Balanced'}</span>
+          <section id="profile-basics" onFocusCapture={() => setActiveSection("profile-basics")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
+            <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Profile Settings</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">Your public identity, photo, and essential match details.</p>
+              </div>
+
+              <div className="space-y-6">
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoChange} className="hidden" />
+                <div className="flex flex-col gap-5 rounded-2xl border border-border/70 bg-background/55 p-4 sm:flex-row sm:items-center">
+                  <button
+                    type="button"
+                    onClick={() => !uploadingPhoto && fileInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="group relative h-28 w-28 shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:h-32 sm:w-32"
+                  >
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt={displayName} className="h-full w-full rounded-full border-4 border-primary/20 object-cover shadow-lg" />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-dashed border-primary/30 bg-primary/5 font-serif text-5xl font-bold text-primary">
+                        {displayName.charAt(0).toUpperCase()}
+                      </div>
+                    )}
+                    <div className={cn("absolute inset-0 flex flex-col items-center justify-center rounded-full transition-opacity", uploadingPhoto ? "bg-black/50 opacity-100" : "bg-black/0 opacity-0 group-hover:bg-black/45 group-hover:opacity-100")}>
+                      {uploadingPhoto ? (
+                        <Loader2 className="h-8 w-8 animate-spin text-white" />
+                      ) : (
+                        <>
+                          <Camera className="mb-1 h-6 w-6 text-white" />
+                          <span className="text-xs font-medium text-white">Change</span>
+                        </>
+                      )}
+                    </div>
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-foreground">{displayName}</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">JPG, PNG or WebP. Max 5 MB.</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button type="button" size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploadingPhoto}>
+                        Upload New
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" onClick={handleRemovePhoto} disabled={uploadingPhoto || (!avatarPreview && !form.avatar_url)}>
+                        Delete avatar
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <input 
-                  type="range" min="1" max="10" step="1" 
-                  value={form.introvert_extrovert} 
-                  onChange={(e) => setForm({ ...form, introvert_extrovert: parseInt(e.target.value) })}
-                  className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary" 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Hobbies & Interests</Label>
-                <Input 
-                  value={form.hobbies.join(', ')} 
-                  onChange={(e) => setForm({ ...form, hobbies: e.target.value.split(',').map(s => s.trim()).filter(Boolean) })}
-                  placeholder="Cooking, Hiking, Photography..." 
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Daily Habits / Social Preferences</Label>
-                <Input value={form.social_preferences} onChange={(e) => setForm({ ...form, social_preferences: e.target.value })} placeholder="e.g. Early riser, party person vs chill" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Values & Intent */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <Card className="border-card-border shadow-md">
-            <CardHeader><CardTitle className="text-lg">Values & Preferences</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Career Ambition Level</Label>
-                <Select value={form.career_ambition} onValueChange={(v) => setForm({ ...form, career_ambition: v })}>
-                  <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="High">Very Ambitious / Career Focused</SelectItem>
-                    <SelectItem value="Moderate">Balanced / Moderate</SelectItem>
-                    <SelectItem value="Low">Relaxed / Not a priority</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Full Name *</Label>
+                    <Input id="name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="John Doe" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="age">Age *</Label>
+                    <Input id="age" type="number" min={18} max={100} value={form.age} onChange={(e) => setForm({ ...form, age: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Gender *</Label>
+                    <Select value={form.gender} onValueChange={(v) => setForm({ ...form, gender: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select gender" /></SelectTrigger>
+                      <SelectContent>
+                        {GENDERS.map((g) => <SelectItem key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Religion *</Label>
+                    <Select value={form.religion} onValueChange={(v) => setForm({ ...form, religion: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select religion" /></SelectTrigger>
+                      <SelectContent>
+                        {RELIGIONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City *</Label>
+                    <Input id="city" value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} placeholder="e.g. Bangalore" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="profession">Profession</Label>
+                    <Input id="profession" value={form.profession} onChange={(e) => setForm({ ...form, profession: e.target.value })} placeholder="e.g. Software Engineer" />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Family Goals</Label>
-                <Input value={form.family_goals} onChange={(e) => setForm({ ...form, family_goals: e.target.value })} placeholder="e.g. Want children, family-oriented" />
-              </div>
-              <div className="space-y-2">
-                <Label>Lifestyle Choices (Smoking/Drinking)</Label>
-                <Input value={form.lifestyle_choices} onChange={(e) => setForm({ ...form, lifestyle_choices: e.target.value })} placeholder="e.g. Non-smoker, Social drinker" />
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          </section>
 
-          <Card className="border-card-border shadow-md">
-            <CardHeader><CardTitle className="text-lg">Intent & Goals</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>What are you looking for in a partner?</Label>
-                <Textarea 
-                  value={form.search_intent || ""} 
-                  onChange={(e) => setForm({ ...form, search_intent: e.target.value })} 
-                  placeholder="I am looking for someone who..." 
-                  className="min-h-[100px]"
-                />
+          <section id="background" onFocusCapture={() => setActiveSection("background")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
+            <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Background</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">Culture, education, language, and relocation details.</p>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="education">Education</Label>
+                  <Input id="education" value={form.education} onChange={(e) => setForm({ ...form, education: e.target.value })} placeholder="e.g. B.Tech, MBA" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Languages Spoken</Label>
+                  <Input value={form.languages.join(", ")} onChange={(e) => setForm({ ...form, languages: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })} placeholder="English, Hindi, Kannada" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Ethnicity / Cultural Background</Label>
+                  <Input value={form.ethnicity} onChange={(e) => setForm({ ...form, ethnicity: e.target.value })} placeholder="Optional" />
+                </div>
+                <label className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/55 px-4 py-3 sm:col-span-2">
+                  <input type="checkbox" checked={form.willing_to_relocate} onChange={(e) => setForm({ ...form, willing_to_relocate: e.target.checked })} className="h-4 w-4 rounded border-border text-primary accent-primary" />
+                  <span className="text-sm font-medium text-foreground">Willing to relocate for the right match</span>
+                </label>
+              </div>
+            </div>
+          </section>
 
-        {/* Physical Attributes & Media */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <Card className="lg:col-span-1 border-card-border shadow-md">
-            <CardHeader><CardTitle className="text-lg">Physical Attributes</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+          <section id="lifestyle" onFocusCapture={() => setActiveSection("lifestyle")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
+            <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Lifestyle</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">Personality, interests, appearance, and daily rhythm.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <div className="flex justify-between">
+                    <Label>Introvert vs Extrovert</Label>
+                    <span className="text-xs text-muted-foreground">{form.introvert_extrovert <= 3 ? "Introvert" : form.introvert_extrovert >= 8 ? "Extrovert" : "Balanced"}</span>
+                  </div>
+                  <input type="range" min="1" max="10" step="1" value={form.introvert_extrovert} onChange={(e) => setForm({ ...form, introvert_extrovert: parseInt(e.target.value) })} className="h-2 w-full cursor-pointer appearance-none rounded-lg bg-muted accent-primary" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Hobbies & Interests</Label>
+                  <Input value={form.hobbies.join(", ")} onChange={(e) => setForm({ ...form, hobbies: e.target.value.split(",").map(s => s.trim()).filter(Boolean) })} placeholder="Cooking, Hiking, Photography" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Daily Habits</Label>
+                  <Input value={form.habits} onChange={(e) => setForm({ ...form, habits: e.target.value })} placeholder="e.g. Early riser" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Social Preferences</Label>
+                  <Input value={form.social_preferences} onChange={(e) => setForm({ ...form, social_preferences: e.target.value })} placeholder="e.g. Calm evenings" />
+                </div>
                 <div className="space-y-2">
                   <Label>Height (cm)</Label>
                   <Input type="number" value={form.height} onChange={(e) => setForm({ ...form, height: e.target.value })} placeholder="e.g. 175" />
@@ -461,98 +550,147 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
                   <Label>Weight (kg)</Label>
                   <Input type="number" value={form.weight} onChange={(e) => setForm({ ...form, weight: e.target.value })} placeholder="e.g. 70" />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Fitness Level</Label>
-                <Input value={form.fitness_level} onChange={(e) => setForm({ ...form, fitness_level: e.target.value })} placeholder="e.g. Athletic, Average" />
-              </div>
-              <div className="space-y-2">
-                <Label>Personal Style</Label>
-                <Input value={form.style} onChange={(e) => setForm({ ...form, style: e.target.value })} placeholder="e.g. Casual, Formal" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="lg:col-span-2 border-card-border shadow-md">
-            <CardHeader><CardTitle className="text-lg">Media & Expression</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Bio / About You</Label>
-                <Textarea 
-                  value={form.bio} 
-                  onChange={(e) => setForm({ ...form, bio: e.target.value })} 
-                  placeholder="A great bio helps you stand out..." 
-                  className="min-h-[120px]"
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Voice Intro URL (Optional)</Label>
-                  <Input value={form.voice_url} onChange={(e) => setForm({ ...form, voice_url: e.target.value })} placeholder="Link to voice recording" />
+                  <Label>Fitness Level</Label>
+                  <Input value={form.fitness_level} onChange={(e) => setForm({ ...form, fitness_level: e.target.value })} placeholder="e.g. Athletic, Average" />
                 </div>
                 <div className="space-y-2">
-                  <Label>Short Video URL (Optional)</Label>
-                  <Input value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="Link to video intro" />
+                  <Label>Personal Style</Label>
+                  <Input value={form.style} onChange={(e) => setForm({ ...form, style: e.target.value })} placeholder="e.g. Casual, Formal" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Personality Prompts */}
-        <Card className="border-card-border shadow-md">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              Personality Prompts
-            </CardTitle>
-            <CardDescription>Answer these questions to help others know you better</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                "My perfect weekend would be...",
-                "I am most passionate about...",
-                "The most important quality in a partner is..."
-              ].map((q) => (
-                <div key={q} className="space-y-2">
-                  <Label className="text-primary font-medium">{q}</Label>
-                  <Textarea 
-                    value={(form.prompts as Record<string, string>)[q] || ""} 
-                    onChange={(e) => setForm({ 
-                      ...form, 
-                      prompts: { ...(form.prompts as Record<string, string>), [q]: e.target.value } 
-                    })} 
-                    placeholder="Your answer..."
-                    className="resize-none min-h-[100px]"
-                  />
-                </div>
-              ))}
             </div>
-          </CardContent>
-        </Card>
+          </section>
 
-        <div className="flex justify-center pt-4">
-          <Button type="submit" disabled={loading || uploadingPhoto} size="lg" className="min-w-[240px] text-lg h-14">
-            {loading ? (
-              <><Loader2 className="h-6 w-6 mr-3 animate-spin" />{mode === "create" ? "Creating Profile..." : "Saving Changes..."}</>
-            ) : (
-              mode === "create" ? "Create My Profile" : "Update My Profile"
+          <section id="preferences" onFocusCapture={() => setActiveSection("preferences")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
+            <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Preferences</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">Values, family goals, and what you are looking for.</p>
+              </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Career Ambition Level</Label>
+                  <Select value={form.career_ambition} onValueChange={(v) => setForm({ ...form, career_ambition: v })}>
+                    <SelectTrigger><SelectValue placeholder="Select level" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="High">Very Ambitious / Career Focused</SelectItem>
+                      <SelectItem value="Moderate">Balanced / Moderate</SelectItem>
+                      <SelectItem value="Low">Relaxed / Not a priority</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Family Goals</Label>
+                  <Input value={form.family_goals} onChange={(e) => setForm({ ...form, family_goals: e.target.value })} placeholder="e.g. Want children" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>Lifestyle Choices</Label>
+                  <Input value={form.lifestyle_choices} onChange={(e) => setForm({ ...form, lifestyle_choices: e.target.value })} placeholder="e.g. Non-smoker, Social drinker" />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <Label>What are you looking for in a partner?</Label>
+                  <Textarea value={form.search_intent || ""} onChange={(e) => setForm({ ...form, search_intent: e.target.value })} placeholder="I am looking for someone who..." className="min-h-[120px]" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section id="media" onFocusCapture={() => setActiveSection("media")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
+            <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
+              <div>
+                <h2 className="text-base font-bold text-foreground">Media & Prompts</h2>
+                <p className="mt-1 text-sm leading-6 text-muted-foreground">Bio, intro links, and prompt answers others will see.</p>
+              </div>
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <Label>Bio / About You</Label>
+                  <Textarea value={form.bio} onChange={(e) => setForm({ ...form, bio: e.target.value })} placeholder="A great bio helps you stand out..." className="min-h-[120px]" />
+                </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Voice Intro URL</Label>
+                    <Input value={form.voice_url} onChange={(e) => setForm({ ...form, voice_url: e.target.value })} placeholder="Link to voice recording" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Short Video URL</Label>
+                    <Input value={form.video_url} onChange={(e) => setForm({ ...form, video_url: e.target.value })} placeholder="Link to video intro" />
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    <h3 className="text-sm font-bold text-foreground">Personality Prompts</h3>
+                  </div>
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {[
+                      "My perfect weekend would be...",
+                      "I am most passionate about...",
+                      "The most important quality in a partner is..."
+                    ].map((q) => (
+                      <div key={q} className="space-y-2">
+                        <Label className="font-medium text-primary">{q}</Label>
+                        <Textarea value={(form.prompts as Record<string, string>)[q] || ""} onChange={(e) => setForm({ ...form, prompts: { ...(form.prompts as Record<string, string>), [q]: e.target.value } })} placeholder="Your answer..." className="min-h-[100px] resize-none" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {mode === "edit" && (
+            <section id="privacy" onFocusCapture={() => setActiveSection("privacy")} className="scroll-mt-6 border-b border-border/70 px-5 py-6 sm:px-7">
+              <div className="grid gap-7 xl:grid-cols-[220px_1fr]">
+                <div>
+                  <h2 className="text-base font-bold text-foreground">Privacy</h2>
+                  <p className="mt-1 text-sm leading-6 text-muted-foreground">Manage accounts you have blocked.</p>
+                </div>
+                <div className="rounded-2xl border border-border/70 bg-background/55 p-4">
+                  <BlockedUsersList />
+                </div>
+              </div>
+            </section>
+          )}
+
+          <div className={cn("flex flex-col gap-3 bg-card px-5 py-5 sm:flex-row sm:items-center sm:justify-end sm:px-7", isCreateMode && "bg-transparent px-0 sm:px-0")}>
+            {mode === "edit" && (
+              <Button type="button" variant="outline" onClick={() => setLocation("/browse")}>
+                Cancel
+              </Button>
             )}
-          </Button>
-        </div>
-      </form>
-
-      {mode === "edit" && (
-        <div className="pt-8 border-t border-border">
-          <BlockedUsersList />
-        </div>
-      )}
+            <Button type="submit" disabled={loading || uploadingPhoto} size="lg" className="min-w-[180px]">
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  {mode === "create" ? "Creating..." : "Saving..."}
+                </>
+              ) : (
+                mode === "create" ? "Create My Profile" : "Save Changes"
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 
-  if (mode === "create") {
-    return <div className="min-h-screen bg-background">{content}</div>;
+  if (isCreateMode) {
+    return (
+      <AuthSplitLayout
+        title="Create your profile"
+        subtitle="Add the details that help the right people understand who you are."
+        eyebrow="Profile onboarding"
+        visualKicker="Profile Setup"
+        visualMeta="Tell your story"
+        visualTitle="A thoughtful profile makes the first hello easier."
+        visualSubtitle="Start with the essentials, then add the details that make your match feel human."
+        wide
+        contentClassName="justify-start py-2"
+      >
+        {content}
+      </AuthSplitLayout>
+    );
   }
 
   return <Layout>{content}</Layout>;

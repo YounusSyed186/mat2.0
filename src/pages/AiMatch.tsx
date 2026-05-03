@@ -2,10 +2,23 @@ import { useState, useEffect, useCallback } from "react";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent } from "@/components/ui/card";
-import { ProfileCard } from "@/components/ProfileCard";
 import { PaginationControls } from "@/components/PaginationControls";
-import { Heart, Sparkles, Loader2, Crown, Lock, Search, AlertCircle, RefreshCw } from "lucide-react";
+import { AnimatedTestimonials } from "@/components/ui/animated-testimonials";
+import {
+  AlertCircle,
+  Bot,
+  Crown,
+  FileHeart,
+  Heart,
+  Loader2,
+  Lock,
+  MessageSquarePlus,
+  RefreshCw,
+  Search,
+  Send,
+  Sparkles,
+  Wand2,
+} from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { generateEmbedding, generateMatchExplanation, parseSearchFilters } from "@/lib/ai";
 import { useAuth } from "@/context/AuthContext";
@@ -14,7 +27,6 @@ import type { Profile } from "@/types";
 import { Link } from "wouter";
 import { useAiAccess } from "@/hooks/useAiAccess";
 import { Badge } from "@/components/ui/badge";
-
 import { useAiStore } from "@/stores/useAiStore";
 
 interface MatchResult extends Profile {
@@ -23,26 +35,51 @@ interface MatchResult extends Profile {
 
 const MATCH_LIMIT = 12;
 
+const promptSuggestions = [
+  {
+    icon: Heart,
+    title: "Values-first match",
+    prompt: "Find someone family-oriented, kind, emotionally mature, and serious about marriage.",
+  },
+  {
+    icon: Wand2,
+    title: "Lifestyle fit",
+    prompt: "I want a partner who enjoys travel, fitness, good conversations, and a balanced modern lifestyle.",
+  },
+  {
+    icon: FileHeart,
+    title: "Career and city",
+    prompt: "Show me ambitious professionals in my city who share similar education and long-term goals.",
+  },
+];
+
+function profileImage(match: MatchResult) {
+  return match.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${match.id}`;
+}
+
 export default function AiMatch() {
   const { profile } = useAuth();
   const { hasAccess, isLoading: accessLoading } = useAiAccess();
-  
+
   const { matchQuery, matchResults, matchExplanation, matchPage, setMatchData } = useAiStore();
-  
+
   const [query, setQuery] = useState(matchQuery);
+  const [submittedQuery, setSubmittedQuery] = useState(matchQuery);
   const [isSearching, setIsSearching] = useState(false);
   const [matches, setMatches] = useState<MatchResult[]>(matchResults);
   const [aiExplanation, setAiExplanation] = useState<string>(matchExplanation);
   const [hasSearched, setHasSearched] = useState(matchResults.length > 0);
   const [error, setError] = useState<string | null>(null);
 
-  // Pagination State
   const [currentPage, setCurrentPage] = useState(matchPage);
-  const [totalCount, setTotalCount] = useState(0);
+  const [totalCount, setTotalCount] = useState(matchResults.length);
 
-  const handleSearch = useCallback(async (page: number = 1) => {
-    if (!query.trim()) return;
+  const handleSearch = useCallback(async (page: number = 1, searchText = query) => {
+    const cleanQuery = searchText.trim();
+    if (!cleanQuery) return;
 
+    setSubmittedQuery(cleanQuery);
+    setQuery(cleanQuery);
     setIsSearching(true);
     setError(null);
     if (page === 1) {
@@ -52,22 +89,16 @@ export default function AiMatch() {
     }
 
     try {
-      // 1. Parse structured filters from natural language query (Hybrid Search)
-      const parsedFilters = await parseSearchFilters(query);
-
-      // 2. Convert query to embedding
-      const queryEmbedding = await generateEmbedding(query);
-
-      // 3. Perform vector search in Supabase using the paginated RPC
+      const parsedFilters = await parseSearchFilters(cleanQuery);
+      const queryEmbedding = await generateEmbedding(cleanQuery);
       const offset = (page - 1) * MATCH_LIMIT;
-      
-      // Automatic gender filter (opposite by default)
+
       let targetGender = parsedFilters?.gender || null;
       if (!targetGender) {
-        if (profile?.gender === 'male') {
-          targetGender = 'female';
-        } else if (profile?.gender === 'female') {
-          targetGender = 'male';
+        if (profile?.gender === "male") {
+          targetGender = "female";
+        } else if (profile?.gender === "female") {
+          targetGender = "male";
         }
       }
 
@@ -79,7 +110,7 @@ export default function AiMatch() {
         filter_age_max: parsedFilters?.age_max || 100,
         filter_gender: targetGender,
         filter_religion: parsedFilters?.religion,
-        exclude_user_id: profile?.id
+        exclude_user_id: profile?.id,
       });
 
       if (searchError) throw searchError;
@@ -90,16 +121,13 @@ export default function AiMatch() {
 
       let finalExplanation = aiExplanation;
       if (page === 1) {
-        if (data && data.length > 0) {
-          finalExplanation = await generateMatchExplanation(query, data);
-        } else {
-          finalExplanation = "I couldn't find any profiles that strongly match your description. Try using different keywords or broadening your criteria.";
-        }
+        finalExplanation = newMatches.length
+          ? await generateMatchExplanation(cleanQuery, newMatches)
+          : "I couldn't find any profiles that strongly match your description. Try using broader details around values, city, lifestyle, or profession.";
         setAiExplanation(finalExplanation);
       }
 
-      setMatchData(query, newMatches, finalExplanation, page);
-
+      setMatchData(cleanQuery, newMatches, finalExplanation, page);
     } catch (err: any) {
       console.error("AI Match error:", err);
       setError(err.message || "Failed to search profiles");
@@ -107,24 +135,33 @@ export default function AiMatch() {
     } finally {
       setIsSearching(false);
     }
-  }, [query, profile?.id]);
+  }, [query, profile?.id, aiExplanation, setMatchData]);
 
   useEffect(() => {
     if (hasSearched && currentPage > 1) {
-      handleSearch(currentPage);
+      handleSearch(currentPage, submittedQuery);
     }
   }, [currentPage]);
 
   const onNewSearch = () => {
     setCurrentPage(1);
-    handleSearch(1);
+    handleSearch(1, query);
   };
 
-  // Paywall gate
+  const startFresh = () => {
+    setQuery("");
+    setSubmittedQuery("");
+    setMatches([]);
+    setAiExplanation("");
+    setError(null);
+    setHasSearched(false);
+    setCurrentPage(1);
+  };
+
   if (accessLoading) {
     return (
       <Layout>
-        <div className="p-8 flex items-center justify-center">
+        <div className="flex min-h-full items-center justify-center p-8">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </Layout>
@@ -134,26 +171,26 @@ export default function AiMatch() {
   if (!hasAccess) {
     return (
       <Layout>
-        <div className="p-4 md:p-8 max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6 animate-in fade-in duration-500">
-          <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center">
-            <Lock className="h-12 w-12 text-primary" />
-          </div>
-          <div className="space-y-2">
-            <Badge className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300 border-yellow-200">
-              <Crown className="w-3.5 h-3.5 mr-1.5" />
+        <div className="flex min-h-full items-center justify-center p-4 md:p-8">
+          <div className="flex max-w-2xl flex-col items-center text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
+              <Lock className="h-10 w-10 text-primary" />
+            </div>
+            <Badge className="mt-6 border-primary/20 bg-primary/10 text-primary">
+              <Crown className="mr-1.5 h-3.5 w-3.5" />
               Premium Feature
             </Badge>
-            <h1 className="text-4xl font-serif font-bold">AI Match Assistant</h1>
-            <p className="text-muted-foreground text-lg max-w-md mx-auto">
-              Unlock the power of AI to find matches using natural language. Exclusive to <strong>Gold</strong> and <strong>Diamond</strong> members.
+            <h1 className="mt-4 text-3xl font-bold md:text-4xl">AI Match Assistant</h1>
+            <p className="mt-3 max-w-md text-base leading-relaxed text-muted-foreground">
+              Unlock natural-language matching for lifestyle, values, profession, and long-term compatibility.
             </p>
+            <Button asChild size="lg" className="mt-6 h-12 rounded-full px-7">
+              <Link href="/subscriptions">
+                <Crown className="h-5 w-5" />
+                Upgrade to Premium
+              </Link>
+            </Button>
           </div>
-          <Button asChild size="lg" className="gap-2 h-14 px-8 text-lg">
-            <Link href="/subscriptions">
-              <Crown className="h-5 w-5" />
-              Upgrade to Premium
-            </Link>
-          </Button>
         </div>
       </Layout>
     );
@@ -161,155 +198,164 @@ export default function AiMatch() {
 
   return (
     <Layout>
-      <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
-        <div className="space-y-2 text-center md:text-left">
-          <h1 className="text-4xl font-serif font-bold text-foreground flex items-center justify-center md:justify-start gap-3">
-            <Sparkles className="h-10 w-10 text-primary" />
-            AI Matchmaker
-          </h1>
-          <p className="text-muted-foreground text-lg">
-            Describe your ideal partner in plain English. Our AI understands preferences, lifestyle, and values.
-          </p>
+      <div className="flex min-h-full flex-col bg-[radial-gradient(circle_at_top,rgba(214,51,108,0.08),transparent_34%)]">
+        <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-3 md:px-6">
+          <div className="flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar text-white">
+              <Sparkles className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-bold">Vivah AI Match</p>
+              <p className="text-xs text-muted-foreground">Compatibility search</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="h-9 rounded-full px-3 text-xs">
+              <Bot className="h-3.5 w-3.5" />
+              VivahAI 2.0
+            </Button>
+            <Button size="sm" className="h-9 rounded-full px-3 text-xs" onClick={startFresh}>
+              <MessageSquarePlus className="h-3.5 w-3.5" />
+              New Chat
+            </Button>
+          </div>
         </div>
 
-        {/* Search Input Section */}
-        <Card className="border-primary/20 shadow-lg overflow-hidden">
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1 space-y-2">
-                <Textarea
-                  placeholder='e.g., "I am looking for an ambitious software engineer who loves trekking, speaks Hindi, and lives in Bangalore..."'
-                  className="min-h-[120px] resize-none text-lg border-none focus-visible:ring-0 p-0 shadow-none"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      onNewSearch();
-                    }
-                  }}
-                />
-                <div className="flex items-center justify-between pt-2 border-t border-border/50">
-                  <p className="text-xs text-muted-foreground">Tip: Be as specific as you like about hobbies, values, and location.</p>
-                  <p className="text-xs text-muted-foreground hidden md:block">Press Enter to search</p>
-                </div>
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-6 md:px-6">
+          {!hasSearched ? (
+            <div className="flex flex-1 flex-col items-center justify-center pb-8 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sidebar shadow-[0_16px_32px_rgba(0,0,0,0.14)]">
+                <Heart className="h-8 w-8 fill-primary text-primary" />
               </div>
-              <Button 
-                onClick={onNewSearch} 
-                disabled={!query.trim() || isSearching}
-                className="md:h-auto gap-2 min-w-[160px] text-lg font-semibold h-14"
-              >
-                {isSearching ? <Loader2 className="h-6 w-6 animate-spin" /> : <Sparkles className="h-6 w-6" />}
-                {isSearching ? "Thinking..." : "Find Matches"}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="mt-5 text-sm text-muted-foreground">Hi, {profile?.name?.split(" ")[0] || "there"}</p>
+              <h1 className="mt-2 text-2xl font-bold md:text-4xl">Who should we look for?</h1>
 
-        {/* Results Section */}
-        {hasSearched && (
-          <div className="space-y-10">
-            
-            {/* AI Explanation Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-start">
-              <div className="lg:col-span-1 space-y-4">
-                <div className="bg-primary/5 p-6 rounded-2xl border border-primary/10 flex flex-col items-center text-center">
-                  <div className="bg-primary/10 p-4 rounded-full mb-4">
-                    <Sparkles className="h-8 w-8 text-primary" />
-                  </div>
-                  <h4 className="font-semibold text-primary">AI Match Analysis</h4>
-                  <p className="text-xs text-muted-foreground mt-2">Insights based on semantic similarity and shared values.</p>
-                </div>
+              <div className="mt-8 grid w-full max-w-3xl gap-3 md:grid-cols-3">
+                {promptSuggestions.map(({ icon: Icon, title, prompt }) => (
+                  <button
+                    key={title}
+                    type="button"
+                    onClick={() => setQuery(prompt)}
+                    className="rounded-lg border border-card-border bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/35 hover:shadow-md"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <span className="mt-4 block text-sm font-semibold text-foreground">{title}</span>
+                    <span className="mt-2 block text-xs leading-relaxed text-muted-foreground">{prompt}</span>
+                  </button>
+                ))}
               </div>
-              
-              <div className="lg:col-span-3">
-                <Card className="bg-muted/30 border-muted shadow-inner min-h-[160px] flex items-center">
-                  <CardContent className="pt-6 w-full">
-                    {isSearching && currentPage === 1 ? (
-                      <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-                        <Loader2 className="h-10 w-10 animate-spin mb-3 text-primary" />
-                        <p className="font-medium">Curating your best matches...</p>
-                      </div>
-                    ) : aiExplanation ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none">
-                        {aiExplanation.split('\n\n').map((paragraph, i) => (
-                          <p key={i} className="text-base leading-relaxed text-foreground/90">{paragraph}</p>
+            </div>
+          ) : (
+            <div className="flex-1 space-y-5 pb-6">
+              <div className="ml-auto max-w-2xl rounded-2xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground shadow-sm">
+                <p className="text-sm leading-relaxed">{submittedQuery}</p>
+              </div>
+
+              <div className="mr-auto max-w-4xl rounded-2xl rounded-bl-md border border-card-border bg-card p-4 shadow-sm md:p-5">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    {isSearching && currentPage === 1 ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold">AI Match Analysis</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isSearching && currentPage === 1 ? "Curating your best matches..." : `${matches.length} recommendation${matches.length === 1 ? "" : "s"} ready`}
+                    </p>
+                  </div>
+                </div>
+
+                {error ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertCircle className="mb-3 h-10 w-10 text-destructive" />
+                    <h3 className="text-lg font-semibold">Search failed</h3>
+                    <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+                    <Button onClick={onNewSearch} variant="outline" className="mt-4 rounded-full">
+                      <RefreshCw className="h-4 w-4" />
+                      Try Again
+                    </Button>
+                  </div>
+                ) : isSearching && currentPage === 1 ? (
+                  <div className="space-y-3 py-3">
+                    <div className="h-4 w-4/5 animate-pulse rounded bg-muted" />
+                    <div className="h-4 w-full animate-pulse rounded bg-muted" />
+                    <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
+                  </div>
+                ) : (
+                  <>
+                    {aiExplanation && (
+                      <div className="space-y-3 text-sm leading-relaxed text-foreground/90">
+                        {aiExplanation.split("\n\n").map((paragraph, index) => (
+                          <p key={index}>{paragraph}</p>
                         ))}
                       </div>
-                    ) : null}
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
+                    )}
 
-            {/* Profile Grid */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="text-2xl font-serif font-bold flex items-center gap-2">
-                  <Heart className="h-6 w-6 text-primary fill-primary" />
-                  Recommended Matches
-                </h3>
-                {matches.length > 0 && !isSearching && (
-                  <span className="text-sm text-muted-foreground">Page {currentPage}</span>
+                    {matches.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Search className="mb-3 h-12 w-12 text-muted-foreground/25" />
+                        <h3 className="text-lg font-semibold">No direct matches found</h3>
+                        <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+                          Try a broader description with values, city, lifestyle, or profession.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-5 overflow-hidden rounded-2xl border border-card-border bg-background/70">
+                        <AnimatedTestimonials
+                          autoplay
+                          testimonials={matches.map((match) => ({
+                            quote: match.bio || `Meet ${match.name}, a ${match.age} year old ${match.profession || "professional"} from ${match.city || "their city"}.`,
+                            name: `${match.name}, ${match.age}`,
+                            designation: `${Math.round(match.similarity * 100)}% Match | ${match.city || "Location N/A"} | ${match.religion || "Open preference"}`,
+                            src: profileImage(match),
+                            id: match.id,
+                          }))}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
 
-              {error ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-                  <AlertCircle className="h-12 w-12 text-destructive" />
-                  <div>
-                    <h3 className="text-xl font-semibold">Search failed</h3>
-                    <p className="text-muted-foreground">{error}</p>
-                  </div>
-                  <Button onClick={onNewSearch} variant="outline" className="gap-2">
-                    <RefreshCw className="h-4 w-4" /> Try Again
-                  </Button>
+              {matches.length > 0 && !error && (
+                <div className="pb-2 pt-2">
+                  <PaginationControls
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(totalCount / MATCH_LIMIT)}
+                    onPageChange={setCurrentPage}
+                  />
                 </div>
-              ) : isSearching && currentPage === 1 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Card key={i} className="border-card-border h-[400px]">
-                      <div className="h-40 bg-muted animate-pulse" />
-                      <CardContent className="p-6 space-y-4">
-                        <div className="h-6 w-3/4 bg-muted animate-pulse rounded" />
-                        <div className="space-y-2">
-                          <div className="h-4 w-full bg-muted animate-pulse rounded" />
-                          <div className="h-4 w-2/3 bg-muted animate-pulse rounded" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              ) : matches.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-32 text-center">
-                  <Search className="h-16 w-16 text-muted-foreground/20 mb-4" />
-                  <h3 className="text-xl font-semibold">No direct matches found</h3>
-                  <p className="text-muted-foreground mt-2 max-w-sm mx-auto">Try rephrasing your search or using broader terms like "software engineer" or "active lifestyle".</p>
-                </div>
-              ) : (
-                <>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                    {matches.map((match) => (
-                      <ProfileCard 
-                        key={match.id} 
-                        profile={match} 
-                        similarity={match.similarity}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="pt-10 pb-20">
-                    <PaginationControls 
-                      currentPage={currentPage} 
-                      totalPages={Math.ceil(totalCount / MATCH_LIMIT)} 
-                      onPageChange={setCurrentPage} 
-                    />
-                  </div>
-                </>
               )}
             </div>
+          )}
+        </div>
+
+        <div className="sticky bottom-0 border-t border-border/60 bg-background/92 px-4 py-3 backdrop-blur md:px-6">
+          <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-card-border bg-card p-2 shadow-[0_14px_34px_rgba(70,15,38,0.10)]">
+            <Textarea
+              placeholder="Ask for the kind of partner you want to meet..."
+              className="max-h-32 min-h-11 resize-none border-0 bg-transparent px-3 py-3 text-sm shadow-none focus-visible:ring-0"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  onNewSearch();
+                }
+              }}
+            />
+            <Button
+              onClick={onNewSearch}
+              disabled={!query.trim() || isSearching}
+              size="icon"
+              className="h-10 w-10 shrink-0 rounded-xl"
+              aria-label="Send match search"
+            >
+              {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
           </div>
-        )}
+        </div>
       </div>
     </Layout>
   );

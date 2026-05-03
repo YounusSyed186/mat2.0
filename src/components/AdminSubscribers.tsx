@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { Users, DollarSign, TrendingUp } from "lucide-react";
+import { Users, DollarSign, TrendingUp, Download } from "lucide-react";
 import { UserAvatar } from "@/components/UserAvatar";
 
 type SubscriberData = {
@@ -27,7 +29,86 @@ type SubscriberData = {
   } | null;
 };
 
+const exportColumns = [
+  "Subscription ID",
+  "User ID",
+  "User Name",
+  "Plan",
+  "Billing Cycle",
+  "Status",
+  "Amount Paid",
+  "Start Date",
+  "End Date",
+  "Created At",
+];
+
+const escapeXml = (value: string | number) =>
+  String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+
+const formatDate = (value?: string, dateFormat = "MMM d, yyyy") => {
+  if (!value) return "";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  return format(date, dateFormat);
+};
+
+const getAmountPaid = (sub: SubscriberData) => {
+  const plan = sub.subscription_plans;
+  if (!plan) return 0;
+
+  if (sub.billing_cycle === "monthly") return plan.price_monthly;
+  if (sub.billing_cycle === "quarterly") return plan.price_quarterly;
+  return plan.price_yearly;
+};
+
+const buildExcelWorkbook = (subscribers: SubscriberData[]) => {
+  const rows = subscribers.map((sub) => [
+    sub.id,
+    sub.user_id,
+    sub.profiles?.name || "Unknown User",
+    sub.subscription_plans?.name || "Deleted Plan",
+    sub.billing_cycle,
+    sub.status,
+    getAmountPaid(sub),
+    formatDate(sub.start_date),
+    formatDate(sub.end_date),
+    formatDate(sub.created_at, "yyyy-MM-dd HH:mm"),
+  ]);
+
+  const worksheetRows = [exportColumns, ...rows]
+    .map(
+      (row) =>
+        `<Row>${row
+          .map((cell) => {
+            const type = typeof cell === "number" ? "Number" : "String";
+            return `<Cell><Data ss:Type="${type}">${escapeXml(cell)}</Data></Cell>`;
+          })
+          .join("")}</Row>`
+    )
+    .join("");
+
+  return `<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:x="urn:schemas-microsoft-com:office:excel"
+  xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+  xmlns:html="http://www.w3.org/TR/REC-html40">
+  <Worksheet ss:Name="Subscribers">
+    <Table>${worksheetRows}</Table>
+  </Worksheet>
+</Workbook>`;
+};
+
 export function AdminSubscribers() {
+  const { toast } = useToast();
   const [subscribers, setSubscribers] = useState<SubscriberData[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -58,15 +139,7 @@ export function AdminSubscribers() {
   // Calculate analytics
   const activeSubscribers = subscribers.filter(s => s.status === 'active');
   
-  const totalRevenue = subscribers.reduce((acc, sub) => {
-    if (!sub.subscription_plans) return acc;
-    const plan = sub.subscription_plans;
-    let price = 0;
-    if (sub.billing_cycle === 'monthly') price = plan.price_monthly;
-    if (sub.billing_cycle === 'quarterly') price = plan.price_quarterly;
-    if (sub.billing_cycle === 'yearly') price = plan.price_yearly;
-    return acc + price;
-  }, 0);
+  const totalRevenue = subscribers.reduce((acc, sub) => acc + getAmountPaid(sub), 0);
 
   const mrr = activeSubscribers.reduce((acc, sub) => {
     if (!sub.subscription_plans) return acc;
@@ -77,6 +150,33 @@ export function AdminSubscribers() {
     if (sub.billing_cycle === 'yearly') monthlyEquivalent = plan.price_yearly / 12;
     return acc + monthlyEquivalent;
   }, 0);
+
+  const handleExportSubscribers = () => {
+    if (subscribers.length === 0) {
+      toast({
+        title: "No subscribers to export",
+        description: "There are no subscription records to download yet.",
+      });
+      return;
+    }
+
+    const workbook = buildExcelWorkbook(subscribers);
+    const blob = new Blob([workbook], { type: "application/vnd.ms-excel;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download = `subscribers-${format(new Date(), "yyyy-MM-dd")}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Export started",
+      description: `Downloaded ${subscribers.length} subscriber ${subscribers.length === 1 ? "record" : "records"}.`,
+    });
+  };
 
   if (loading) {
     return <div className="p-8 text-center text-muted-foreground">Loading subscriber data...</div>;
@@ -126,8 +226,18 @@ export function AdminSubscribers() {
 
       {/* Subscribers Table */}
       <Card className="shadow-sm">
-        <CardHeader>
+        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle>Subscriber History</CardTitle>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleExportSubscribers}
+            disabled={subscribers.length === 0}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export to Excel
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border overflow-x-auto">
@@ -152,11 +262,7 @@ export function AdminSubscribers() {
                 ) : (
                   subscribers.map((sub) => {
                     const plan = sub.subscription_plans;
-                    const amountPaid = plan 
-                      ? (sub.billing_cycle === 'monthly' ? plan.price_monthly 
-                         : sub.billing_cycle === 'quarterly' ? plan.price_quarterly 
-                         : plan.price_yearly)
-                      : 0;
+                    const amountPaid = getAmountPaid(sub);
 
                     return (
                       <tr key={sub.id} className="border-b last:border-0 hover:bg-muted/50 transition-colors">
@@ -185,7 +291,7 @@ export function AdminSubscribers() {
                           ${amountPaid.toFixed(2)}
                         </td>
                         <td className="px-4 py-3 text-muted-foreground text-xs">
-                          {format(new Date(sub.start_date), "MMM d, yyyy")} - {format(new Date(sub.end_date), "MMM d, yyyy")}
+                          {formatDate(sub.start_date)} - {formatDate(sub.end_date)}
                         </td>
                       </tr>
                     );
