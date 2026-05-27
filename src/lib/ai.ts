@@ -1,230 +1,73 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { supabase } from "@/lib/supabaseClient";
 
-// Initialize Gemini API for embeddings
-const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-const genAI = geminiApiKey ? new GoogleGenerativeAI(geminiApiKey) : null;
+type AiAction =
+  | "generateEmbedding"
+  | "generateProfileOptimization"
+  | "generateMatchExplanation"
+  | "parseSearchFilters";
 
-// Initialize Groq API base configuration (we use fetch to avoid browser SDK warnings)
-const groqApiKey = import.meta.env.VITE_GROQ_API_KEY || '';
-const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+async function invokeAiGateway<T>(action: AiAction, payload: Record<string, unknown>): Promise<T> {
+  const { data, error } = await supabase.functions.invoke<T>("ai-gateway", {
+    body: { action, ...payload },
+  });
 
-/**
- * Generates an embedding for a given text using Gemini
- * Model: text-embedding-004 (1536 dimensions — within pgvector HNSW 2000-dim limit)
- */
-export async function generateEmbedding(text: string): Promise<number[]> {
-  if (!genAI) {
-    throw new Error('Gemini API key is missing.');
-  }
-
-  try {
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-embedding-001'
-    });
-
-    const result = await model.embedContent(text);
-
-    // 🔥 CRITICAL FIX
-    return result.embedding.values.slice(0, 1536);
-
-  } catch (error) {
-    console.error('Error generating embedding:', error);
-    throw new Error('Failed to generate profile embedding.');
-  }
-}
-
-/**
- * Calls Groq API to get an AI profile optimization
- */
-export async function generateProfileOptimization(profile: any) {
-  if (!groqApiKey) {
-    throw new Error('Groq API key is missing. Please add VITE_GROQ_API_KEY to your .env file.');
-  }
-
-  const prompt = `Analyze this matrimonial profile and improve it for better matchmaking success.
-  
-Profile details:
-Name: ${profile.name}
-Age: ${profile.age}
-Gender: ${profile.gender}
-City: ${profile.city}
-Profession: ${profile.profession}
-Bio: ${profile.bio}
-Languages: ${profile.languages?.join(', ')}
-Ethnicity: ${profile.ethnicity}
-Willing to relocate: ${profile.willing_to_relocate}
-Introvert/Extrovert: ${profile.introvert_extrovert} (1-10)
-Hobbies: ${profile.hobbies?.join(', ')}
-Habits/Lifestyle: ${profile.habits}
-Social Preferences: ${profile.social_preferences}
-Career Ambition: ${profile.career_ambition}
-Family Goals: ${profile.family_goals}
-Lifestyle Choices: ${profile.lifestyle_choices}
-Height: ${profile.height}
-Fitness Level: ${profile.fitness_level}
-Style: ${profile.style}
-Search Intent: ${profile.search_intent}
-Prompts: ${JSON.stringify(profile.prompts)}
-
-Return ONLY valid JSON with this exact structure:
-{
-  "profile_score": number (0-100),
-  "strengths": [string],
-  "weaknesses": [string],
-  "missing_fields": [string],
-  "suggestions": [string],
-  "improved_bio": string,
-  "improved_profession": string,
-  "improved_hobbies": [string],
-  "improved_habits": string,
-  "improved_prompts": {
-    "My perfect weekend would be...": string,
-    "I am most passionate about...": string,
-    "The most important quality in a partner is...": string
-  },
-  "match_boost_estimate": string
-}
-
-Rules:
-- Be practical and specific
-- Focus on improving match success
-- Do not be generic
-- Keep suggestions actionable
-- Rewrite bio to be more attractive and clear
-- Suggest better ways to describe profession and hobbies if needed
-- Output MUST be valid JSON only.`;
-
-  try {
-    const response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant', // Fast and capable for this task
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0.7,
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
+  if (error) {
+    const context = (error as { context?: unknown }).context;
+    if (context instanceof Response) {
+      const responseBody = await context.clone().json().catch(() => null) as {
+        error?: string;
+        stage?: string;
+        code?: string;
+        details?: string;
+        hint?: string;
+      } | null;
+      console.error("[AI Gateway] Function request failed", {
+        action,
+        status: context.status,
+        response: responseBody,
+      });
+      const detailParts = [
+        responseBody?.error || `AI service failed with status ${context.status}.`,
+        responseBody?.stage ? `Stage: ${responseBody.stage}` : null,
+        responseBody?.code ? `Code: ${responseBody.code}` : null,
+        responseBody?.details ? `Details: ${responseBody.details}` : null,
+        responseBody?.hint ? `Hint: ${responseBody.hint}` : null,
+      ].filter(Boolean);
+      throw new Error(detailParts.join(" | "));
     }
-
-    const data = await response.json();
-    return JSON.parse(data.choices[0].message.content);
-  } catch (error) {
-    console.error('Error generating profile optimization:', error);
-    throw new Error('Failed to analyze profile. Please try again later.');
+    console.error("[AI Gateway] Function invoke failed before response", { action, error });
+    throw error;
   }
+
+  if (data === null || data === undefined) throw new Error("AI service returned an empty response.");
+  return data;
 }
 
-/**
- * Calls Groq API to explain why the retrieved profiles match the user's query
- */
-export async function generateMatchExplanation(query: string, profiles: any[]) {
-  if (!groqApiKey) {
-    throw new Error('Groq API key is missing. Please add VITE_GROQ_API_KEY to your .env file.');
-  }
-
-  // If no profiles found, return early
-  if (!profiles || profiles.length === 0) {
-    return "I couldn't find any profiles matching your exact criteria right now. Try adjusting your search!";
-  }
-
-  // Only take essential fields to save context window
-  const simpleProfiles = profiles.map(p => ({
-    name: p.name,
-    age: p.age,
-    city: p.city,
-    profession: p.profession,
-    bio: p.bio,
-    match_score: `${Math.round(p.similarity * 100)}%`
-  }));
-
-  const prompt = `A user is searching for matrimonial matches with this query: "${query}"
-
-Based on the vector search, here are the top matching profiles:
-${JSON.stringify(simpleProfiles, null, 2)}
-
-Write a friendly, concise response explaining WHY these profiles match the user's request. 
-Act as a helpful AI Matchmaker. 
-- Highlight the best couple of matches specifically.
-- Keep it under 4 short paragraphs.
-- Be encouraging.
-- Do NOT output JSON. Just natural text.`;
-
-  try {
-    const response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7,
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Groq API error: ${response.status} ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  } catch (error) {
-    console.error('Error generating match explanation:', error);
-    return "Here are the top matches I found based on your search! (AI explanation unavailable)";
-  }
+export async function generateEmbedding(text: string, options: { billable?: boolean; featureName?: string } = {}): Promise<number[]> {
+  const result = await invokeAiGateway<{ embedding: number[] }>("generateEmbedding", {
+    text,
+    billable: options.billable ?? true,
+    featureName: options.featureName || "embedding",
+  });
+  return result.embedding;
 }
 
-/**
- * Parses natural language query into structured filters for hybrid search
- */
+export async function generateProfileOptimization(profile: unknown) {
+  const result = await invokeAiGateway<{ result: Record<string, unknown> }>("generateProfileOptimization", { profile });
+  return result.result;
+}
+
+export async function generateMatchExplanation(query: string, profiles: unknown[]) {
+  const result = await invokeAiGateway<{ explanation: string }>("generateMatchExplanation", { query, profiles });
+  return result.explanation;
+}
+
 export async function parseSearchFilters(query: string) {
-  if (!groqApiKey) return null;
-
-  const prompt = `Analyze this search query for a matrimonial app: "${query}"
-  
-  Extract structured filters if mentioned.
-  - religion (e.g., Muslim, Hindu, Christian, etc.)
-  - age_min (number)
-  - age_max (number)
-  - gender (male or female)
-
-  Return ONLY valid JSON with this structure:
-  {
-    "religion": string | null,
-    "age_min": number | null,
-    "age_max": number | null,
-    "gender": string | null
-  }
-  
-  If a filter is not mentioned, return null for it.`;
-
-  try {
-    const response = await fetch(GROQ_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
-        messages: [{ role: 'user', content: prompt }],
-        response_format: { type: 'json_object' },
-        temperature: 0,
-      })
-    });
-
-    const data = await response.json();
-    return JSON.parse(data.choices[0].message.content);
-  } catch (err) {
-    console.error('Error parsing filters:', err);
-    return null;
-  }
+  const result = await invokeAiGateway<{ filters: unknown }>("parseSearchFilters", { query });
+  return result.filters as {
+    religion: string | null;
+    age_min: number | null;
+    age_max: number | null;
+    gender: string | null;
+  } | null;
 }

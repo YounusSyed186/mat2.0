@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
+import { decryptMessages, encryptMessageContent } from "@/lib/messageCrypto";
+import { checkMessageLimit } from "@/lib/usageLimits";
 import { useAuth } from "@/context/AuthContext";
 import { useBlockStore } from "@/stores/useBlockStore";
 import { useChatStore } from "@/stores/useChatStore";
@@ -15,6 +17,7 @@ import { UserAvatar } from "@/components/UserAvatar";
 import {
   ArrowLeft,
   Ban,
+  Flag,
   Lock,
   Send,
   Wifi,
@@ -26,6 +29,7 @@ import {
   getProfileRelationStatus,
   type ProfileRelationStatus,
 } from "@/lib/profileJourney";
+import { ReportDialog } from "@/components/ReportDialog";
 
 export default function Chat() {
   const navigate = useNavigate();
@@ -43,6 +47,7 @@ export default function Chat() {
   const [canChat, setCanChat] = useState(false);
   const [relationStatus, setRelationStatus] = useState<ProfileRelationStatus>("none");
   const [sending, setSending] = useState(false);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [connected, setConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const seenIds = useRef<Set<string>>(new Set());
@@ -91,7 +96,7 @@ export default function Chat() {
             `and(sender_id.eq.${currentUser.id},receiver_id.eq.${otherUserId}),and(sender_id.eq.${otherUserId},receiver_id.eq.${currentUser.id})`
           )
           .order("created_at", { ascending: true });
-        const loaded = (msgs as Message[]) || [];
+        const loaded = await decryptMessages((msgs as Message[]) || []);
         loaded.forEach((m) => seenIds.current.add(m.id));
         setMessages(loaded);
       }
@@ -114,14 +119,15 @@ export default function Chat() {
 
     channel
       .on("broadcast", { event: "new-message" }, ({ payload }) => {
-        const msg = payload as Message;
-        const isForMe =
-          msg.sender_id === otherUserId && msg.receiver_id === currentUser.id;
-        if (!isForMe) return;
-
-        if (seenIds.current.has(msg.id)) return;
-        seenIds.current.add(msg.id);
-        setMessages((prev) => [...prev, msg]);
+        void (async () => {
+          const msg = payload as Message;
+          const isForMe =
+            msg.sender_id === otherUserId && msg.receiver_id === currentUser.id;
+          if (!isForMe || seenIds.current.has(msg.id)) return;
+          const [decrypted] = await decryptMessages([msg]);
+          seenIds.current.add(decrypted.id);
+          setMessages((prev) => [...prev, decrypted]);
+        })();
       })
       .subscribe((status) => {
         setConnected(status === "SUBSCRIBED");
@@ -153,10 +159,49 @@ export default function Chat() {
     const content = newMessage.trim();
     setNewMessage("");
 
-    // Insert to DB
+    try {
+      const messageLimit = await checkMessageLimit(currentUser.id, myProfile?.role);
+      if (!messageLimit.allowed) {
+        toast({
+          title: "Message limit reached",
+          description: messageLimit.limit === null
+            ? "Your current plan does not allow more messages this month."
+            : `You have used ${messageLimit.used}/${messageLimit.limit} messages this month.`,
+          variant: "destructive",
+        });
+        setNewMessage(content);
+        setSending(false);
+        return;
+      }
+    } catch (error) {
+      console.error("[Chat] Message limit check failed", error);
+      toast({
+        title: "Could not verify message limit",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+      setNewMessage(content);
+      setSending(false);
+      return;
+    }
+
+    let encryptedPayload;
+    try {
+      encryptedPayload = await encryptMessageContent(content);
+    } catch (error) {
+      toast({
+        title: "Failed to encrypt message",
+        description: error instanceof Error ? error.message : "Please try again.",
+        variant: "destructive",
+      });
+      setNewMessage(content);
+      setSending(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("messages")
-      .insert({ sender_id: currentUser.id, receiver_id: otherUserId, content })
+      .insert({ sender_id: currentUser.id, receiver_id: otherUserId, ...encryptedPayload })
       .select()
       .maybeSingle();
 
@@ -167,7 +212,7 @@ export default function Chat() {
       return;
     }
 
-    const sent = data as Message;
+    const sent = { ...(data as Message), content };
 
     // Add to own UI immediately (with dedup guard)
     if (!seenIds.current.has(sent.id)) {
@@ -182,7 +227,7 @@ export default function Chat() {
       await existingChannel.send({
         type: "broadcast",
         event: "new-message",
-        payload: sent,
+        payload: { ...(data as Message), content: "" },
       });
     }
 
@@ -309,6 +354,17 @@ export default function Chat() {
                 <Wifi className="h-3 w-3" />
                 {connected ? "Live" : "Connecting..."}
               </div>
+            )}
+            {currentUser && otherUserId && otherProfile && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 rounded-full text-muted-foreground hover:text-primary"
+                onClick={() => setReportDialogOpen(true)}
+                aria-label="Report conversation"
+              >
+                <Flag className="h-4 w-4" />
+              </Button>
             )}
 
           </div>
@@ -440,6 +496,16 @@ export default function Chat() {
           </section>
         </div>
       </div>
+      {currentUser && otherUserId && otherProfile && (
+        <ReportDialog
+          open={reportDialogOpen}
+          onOpenChange={setReportDialogOpen}
+          reporterId={currentUser.id}
+          reportedUserId={otherUserId}
+          reportedUserName={otherProfile.name}
+          evidenceMessages={messages.slice(-10)}
+        />
+      )}
     </Layout>
   );
 }

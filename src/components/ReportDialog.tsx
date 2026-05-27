@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import type { Message } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -22,9 +23,10 @@ interface ReportDialogProps {
   reporterId: string;
   reportedUserId: string;
   reportedUserName: string;
+  evidenceMessages?: Message[];
 }
 
-export function ReportDialog({ open, onOpenChange, reporterId, reportedUserId, reportedUserName }: ReportDialogProps) {
+export function ReportDialog({ open, onOpenChange, reporterId, reportedUserId, reportedUserName, evidenceMessages = [] }: ReportDialogProps) {
   const { toast } = useToast();
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
@@ -37,19 +39,30 @@ export function ReportDialog({ open, onOpenChange, reporterId, reportedUserId, r
     }
 
     setLoading(true);
-    const fullReason = details ? `${reason}: ${details}` : reason;
-
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('reports')
       .insert({
         reporter_id: reporterId,
         reported_user_id: reportedUserId,
-        reason: fullReason,
-      });
+        reason,
+        details: details || null,
+        status: 'open',
+      })
+      .select('id')
+      .maybeSingle();
 
     if (error) {
       toast({ title: 'Failed to submit report', description: error.message, variant: 'destructive' });
     } else {
+      if (data?.id && evidenceMessages.length > 0) {
+        await supabase.from('report_evidence').insert(evidenceMessages.map((message) => ({
+          report_id: data.id,
+          message_id: message.id,
+          sender_id: message.sender_id,
+          message_created_at: message.created_at,
+          content_snapshot: message.content || '[Encrypted message]',
+        })));
+      }
       toast({ title: 'Report submitted', description: 'Our team will review this report.' });
       onOpenChange(false);
       setReason('');

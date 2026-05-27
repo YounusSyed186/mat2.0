@@ -95,7 +95,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <Card className="border-card-border bg-card shadow-sm">
+    <Card className="premium-card rounded-[26px] shadow-none">
       <CardContent className="p-4">
         <div
           className="flex cursor-pointer items-center justify-between"
@@ -120,7 +120,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   value={filters.gender || "all"}
                   onValueChange={(v) => onFilterChange({ gender: v === "all" ? "" : v })}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className="h-10 rounded-2xl bg-white/70 dark:bg-white/5">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -142,7 +142,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                     placeholder="Min"
                     value={filters.minAge}
                     onChange={(e) => onFilterChange({ minAge: e.target.value })}
-                    className="h-9"
+                    className="h-10 rounded-2xl bg-white/70 dark:bg-white/5"
                   />
                   <span className="text-muted-foreground">-</span>
                   <Input
@@ -152,7 +152,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                     placeholder="Max"
                     value={filters.maxAge}
                     onChange={(e) => onFilterChange({ maxAge: e.target.value })}
-                    className="h-9"
+                    className="h-10 rounded-2xl bg-white/70 dark:bg-white/5"
                   />
                 </div>
               </div>
@@ -163,7 +163,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   placeholder="Search city..."
                   value={filters.city}
                   onChange={(e) => onFilterChange({ city: e.target.value })}
-                  className="h-9"
+                  className="h-10 rounded-2xl bg-white/70 dark:bg-white/5"
                 />
               </div>
 
@@ -173,7 +173,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   value={filters.religion || "all"}
                   onValueChange={(v) => onFilterChange({ religion: v === "all" ? "" : v })}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className="h-10 rounded-2xl bg-white/70 dark:bg-white/5">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -191,7 +191,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   value={filters.profession || "all"}
                   onValueChange={(v) => onFilterChange({ profession: v === "all" ? "" : v })}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className="h-10 rounded-2xl bg-white/70 dark:bg-white/5">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -209,7 +209,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   value={filters.education || "all"}
                   onValueChange={(v) => onFilterChange({ education: v === "all" ? "" : v })}
                 >
-                  <SelectTrigger className="h-9">
+                  <SelectTrigger className="h-10 rounded-2xl bg-white/70 dark:bg-white/5">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -489,12 +489,12 @@ export default function Browse() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 px-4 pb-8 md:px-7 md:pb-9">
+      <div className="min-h-screen px-4 pb-8 pt-2 md:px-7 md:pb-9">
         <div className="mx-auto max-w-7xl">
           {/* Header Section */}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Discover Matches</h1>
+              <h1 className="premium-gradient-text font-serif text-4xl font-bold tracking-tight md:text-5xl">Discover Matches</h1>
               <p className="mt-1 text-muted-foreground">
                 Find your perfect connection based on compatibility and shared values
               </p>
@@ -505,7 +505,7 @@ export default function Browse() {
             {/* Main Content */}
             <div className="min-w-0 space-y-6">
               {/* Hero Card */}
-              <Card className="mobile-card-custom animate-soft-enter relative isolate overflow-hidden border-0 bg-gradient-to-r from-primary to-primary/80 text-white shadow-lg">
+              <Card className="mobile-card-custom animate-soft-enter relative isolate overflow-hidden rounded-[30px] border-0 bg-[linear-gradient(135deg,#111827,#be123c_55%,#0f766e)] text-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
                 <CardContent className="relative p-4 sm:p-6 md:p-8">
                   <div className="relative z-10">
                     <Badge variant="secondary" className="mb-3 bg-white/20 text-white">
@@ -526,13 +526,13 @@ export default function Browse() {
                       <Button
                         size="sm"
                         variant="secondary"
-                        className="pressable w-full justify-center bg-white text-primary hover:bg-white/90 sm:w-auto"
+                        className="pressable w-full justify-center rounded-full bg-white text-slate-950 hover:bg-white/90 sm:w-auto"
                         onClick={() => setShowFilters(!showFilters)}
                       >
                         <Filter className="mr-2 h-4 w-4" />
                         Advanced Filters
                       </Button>
-                      <Button asChild size="sm" variant="ghost" className="pressable w-full justify-center text-white hover:bg-white/20 sm:w-auto">
+                      <Button asChild size="sm" variant="ghost" className="pressable w-full justify-center rounded-full text-white hover:bg-white/20 sm:w-auto">
                         <Link to="/ai-match">
                           AI Match Insights
                           <ArrowRight className="ml-2 h-4 w-4" />
@@ -586,10 +586,10 @@ export default function Browse() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <div className="flex rounded-lg border border-border p-1">
+                    <div className="flex rounded-full border border-border bg-white/60 p-1 shadow-sm backdrop-blur dark:bg-white/5">
                       <button
                         onClick={() => setSelectedView("grid")}
-                        className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                        className={`rounded-full px-3 py-1 text-sm font-semibold transition-colors ${
                           selectedView === "grid" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                         }`}
                       >
@@ -597,7 +597,7 @@ export default function Browse() {
                       </button>
                       <button
                         onClick={() => setSelectedView("list")}
-                        className={`rounded-md px-3 py-1 text-sm transition-colors ${
+                        className={`rounded-full px-3 py-1 text-sm font-semibold transition-colors ${
                           selectedView === "list" ? "bg-primary text-primary-foreground" : "hover:bg-muted"
                         }`}
                       >
@@ -608,7 +608,7 @@ export default function Browse() {
                       variant="outline"
                       size="sm"
                       onClick={() => setShowFilters(!showFilters)}
-                      className="gap-2"
+                      className="gap-2 rounded-full bg-white/60 shadow-none dark:bg-white/5"
                     >
                       <SlidersHorizontal className="h-4 w-4" />
                       Filters
@@ -656,7 +656,7 @@ export default function Browse() {
 
                 {/* Empty State */}
                 {!loading && !error && profiles.length === 0 && (
-                  <Card>
+                  <Card className="premium-card rounded-[28px] shadow-none">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                       <div className="mb-4 rounded-full bg-muted p-4">
                         <Search className="h-12 w-12 text-muted-foreground" />
@@ -706,7 +706,7 @@ export default function Browse() {
             {/* Sidebar */}
             <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
               {/* Profile Summary */}
-              <Card>
+              <Card className="premium-card rounded-[28px] shadow-none">
                 <CardContent className="p-5">
                   {myProfile ? (
                     <>
@@ -772,7 +772,7 @@ export default function Browse() {
               </Card>
 
               {/* Tips Card */}
-              <Card className="bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20">
+              <Card className="overflow-hidden rounded-[28px] border-0 bg-[linear-gradient(135deg,rgba(245,158,11,0.16),rgba(20,184,166,0.12))] shadow-none">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <Zap className="mt-0.5 h-5 w-5 text-amber-600" />

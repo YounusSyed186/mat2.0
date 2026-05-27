@@ -63,6 +63,10 @@ export interface Message {
   sender_id: string;
   receiver_id: string;
   content: string;
+  ciphertext?: string | null;
+  iv?: string | null;
+  key_version?: number | null;
+  encryption_scheme?: string | null;
   created_at: string;
   sender?: Profile;
 }
@@ -81,9 +85,25 @@ export interface Report {
   reporter_id: string;
   reported_user_id: string;
   reason: string;
+  details?: string | null;
+  status?: 'open' | 'reviewing' | 'resolved' | 'dismissed';
+  admin_notes?: string | null;
+  resolved_by?: string | null;
+  resolved_at?: string | null;
   created_at: string;
   reporter?: Profile;
   reported_user?: Profile;
+  report_evidence?: ReportEvidence[];
+}
+
+export interface ReportEvidence {
+  id: string;
+  report_id: string;
+  message_id?: string | null;
+  sender_id?: string | null;
+  message_created_at?: string | null;
+  content_snapshot?: string | null;
+  created_at: string;
 }
 
 export interface Notification {
@@ -104,6 +124,9 @@ export interface SubscriptionPlan {
   price_quarterly: number;
   price_yearly: number;
   interest_limit: number;
+  profile_view_limit_monthly: number;
+  ai_token_limit_monthly: number;
+  message_limit_monthly?: number | null;
   features: string[];
   is_active: boolean;
   created_at: string;

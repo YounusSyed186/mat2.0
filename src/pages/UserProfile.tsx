@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ElementType } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/lib/supabaseClient";
+import { recordProfileView, type ProfileViewLimitResult } from "@/lib/usageLimits";
 import { useAuth } from "@/context/AuthContext";
 import { useBlockStore } from "@/stores/useBlockStore";
 import { useNotificationStore } from "@/stores/useNotificationStore";
@@ -132,6 +133,7 @@ export default function UserProfile() {
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [unblockDialogOpen, setUnblockDialogOpen] = useState(false);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [viewLimit, setViewLimit] = useState<ProfileViewLimitResult | null>(null);
   const [, setBlocking] = useState(false);
 
   useEffect(() => {
@@ -142,6 +144,14 @@ export default function UserProfile() {
     const fetchAll = async () => {
       setLoading(true);
       try {
+        const viewResult = await recordProfileView(userId);
+        setViewLimit(viewResult);
+        if (!viewResult.allowed) {
+          setProfile(null);
+          setLoading(false);
+          return;
+        }
+
         const [{ data: prof }, { data: sent }, { data: recv }] = await Promise.all([
           supabase.from("profiles").select("*").eq("id", userId).single(),
           supabase.from("interests").select("*").eq("sender_id", currentUser.id).eq("receiver_id", userId).maybeSingle(),
@@ -347,6 +357,29 @@ export default function UserProfile() {
   }
 
   if (!profile) {
+    if (viewLimit && !viewLimit.allowed) {
+      const isLimitExceeded = viewLimit.reason === "profile_view_limit_exceeded";
+      return (
+        <Layout>
+          <div className="flex h-full flex-col items-center justify-center px-4 py-32 text-center">
+            <ShieldAlert className="mb-4 h-16 w-16 text-muted-foreground/30" />
+            <h2 className="text-2xl font-bold text-foreground">
+              {isLimitExceeded ? "Profile view limit reached" : "Profile unavailable"}
+            </h2>
+            <p className="mt-2 max-w-sm text-muted-foreground">
+              {isLimitExceeded
+                ? `You have used your monthly profile views${viewLimit.limit ? ` (${viewLimit.limit})` : ""}. Upgrade your plan to keep browsing.`
+                : "You cannot view this profile right now."}
+            </p>
+            <div className="mt-8 flex flex-col gap-2 sm:flex-row">
+              <Button variant="outline" onClick={() => navigate("/browse")}>Back to Browse</Button>
+              {isLimitExceeded && <Button onClick={() => navigate("/subscriptions")}>Upgrade Plan</Button>}
+            </div>
+          </div>
+        </Layout>
+      );
+    }
+
     return (
       <Layout>
         <div className="flex h-full flex-col items-center justify-center px-4 py-32 text-center">

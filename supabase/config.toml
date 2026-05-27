@@ -1,0 +1,5 @@
+[functions.ai-gateway]
+verify_jwt = false
+
+[functions.message-crypto]
+verify_jwt = false

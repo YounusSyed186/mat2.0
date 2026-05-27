@@ -71,15 +71,15 @@ const NavLink = memo(({
           <Link
             to={isLocked ? "/subscriptions" : href}
             className={cn(
-              "group/nav relative flex items-center rounded-lg text-sm font-medium transition-[background-color,color,box-shadow,transform] duration-150 ease-out",
+              "group/nav relative flex items-center rounded-2xl text-sm font-semibold transition-[background-color,color,box-shadow,transform] duration-150 ease-out",
               compactOnDesktop
                 ? "justify-center gap-0 px-0 py-2.5"
                 : "gap-3 px-3 py-2.5",
               isActive && !isLocked
-                ? "bg-gradient-to-r from-primary/20 to-primary/10 text-primary shadow-sm"
+                ? "bg-white/10 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
                 : isLocked
                   ? "text-sidebar-foreground/50 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground"
-                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                  : "text-sidebar-foreground/72 hover:bg-white/[0.07] hover:text-sidebar-foreground"
             )}
             onClick={onClick}
             data-testid={`nav-${label.toLowerCase().replace(/ /g, "-")}`}
@@ -276,29 +276,30 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   return (
-    <div className="mobile-app-shell relative h-[100dvh] overflow-hidden bg-[#fff9fc] p-0 text-foreground dark:bg-[#211219] md:bg-[#080606] md:px-[0.5vw] md:py-[0.5dvh] md:dark:bg-[#080606]">
-      <div className="pointer-events-none fixed inset-0 hidden opacity-95 md:block">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_14%,rgba(236,72,153,0.15),transparent_40%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(236,72,153,0.08)_0,transparent_42%,rgba(97,18,50,0.12)_100%)]" />
+    <div className="mobile-app-shell premium-shell-bg relative h-[100dvh] overflow-hidden p-0 text-foreground md:px-3 md:py-3">
+      <div className="pointer-events-none fixed inset-0 opacity-80">
+        <div className="absolute inset-x-0 top-0 h-56 bg-[linear-gradient(180deg,rgba(255,255,255,0.68),transparent)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.05),transparent)]" />
+        <div className="absolute -left-24 top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
+        <div className="absolute -right-28 bottom-24 h-72 w-72 rounded-full bg-teal-500/10 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex h-full w-full max-w-none overflow-hidden rounded-none bg-[#fff9fc] shadow-none dark:bg-[#211219] md:rounded-[28px] md:bg-background md:shadow-xl md:dark:bg-background">
+      <div className="relative mx-auto flex h-full w-full max-w-[1660px] overflow-hidden rounded-none bg-white/72 shadow-none ring-1 ring-white/70 backdrop-blur-2xl dark:bg-slate-950/58 dark:ring-white/10 md:rounded-[30px] md:shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
         {/* Desktop Sidebar */}
         <aside
           className={cn(
-            "group/sidebar m-2 mr-0 hidden w-[260px] shrink-0 flex-col overflow-hidden rounded-[22px] bg-gradient-to-b from-sidebar to-sidebar/95 text-sidebar-foreground shadow-lg md:flex"
+            "group/sidebar m-3 mr-0 hidden w-[276px] shrink-0 flex-col overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--sidebar)),hsl(226_34%_11%))] text-sidebar-foreground shadow-[0_24px_70px_rgba(15,23,42,0.34)] md:flex"
           )}
         >
           <Link
             to="/browse"
             className={cn(
-              "flex w-full items-center py-6 transition-opacity duration-150 hover:opacity-85",
+              "flex w-full items-center py-7 transition-opacity duration-150 hover:opacity-85",
               sidebarCompact
                 ? "justify-center gap-0 px-0"
                 : "gap-3 px-7"
             )}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-white to-gray-100 p-1 shadow-md">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-[0_12px_30px_rgba(0,0,0,0.24)] ring-1 ring-white/50">
               <img
                 src={logoSrc}
                 alt="Vivah"
@@ -308,7 +309,7 @@ export function Layout({ children }: LayoutProps) {
             </div>
             <span
               className={cn(
-                "whitespace-nowrap bg-gradient-to-r from-white to-gray-300 bg-clip-text font-serif text-xl font-bold text-transparent transition-[max-width,opacity] duration-150 ease-out",
+                "whitespace-nowrap bg-gradient-to-r from-white to-amber-100 bg-clip-text font-serif text-2xl font-bold text-transparent transition-[max-width,opacity] duration-150 ease-out",
                 sidebarCompact && "max-w-0 overflow-hidden opacity-0"
               )}
             >
@@ -319,7 +320,7 @@ export function Layout({ children }: LayoutProps) {
           <ScrollArea className="flex-1">
             <nav
               className={cn(
-                "space-y-1 py-3 transition-[padding] duration-150 ease-out",
+                "space-y-1.5 py-3 transition-[padding] duration-150 ease-out",
                 sidebarCompact ? "px-2" : "px-3"
               )}
             >
@@ -340,8 +341,8 @@ export function Layout({ children }: LayoutProps) {
 
           <div className={cn("pb-5 transition-[padding] duration-150 ease-out", sidebarCompact ? "px-2" : "px-4")}>
             {!sidebarCompact && (
-              <div className="relative mb-4 overflow-hidden rounded-xl bg-gradient-to-br from-amber-500/10 via-pink-500/10 to-purple-500/10 p-4">
-                <div className="absolute right-0 top-0 h-20 w-20 bg-gradient-to-br from-amber-500/20 to-pink-500/20 blur-2xl" />
+              <div className="relative mb-4 overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.06] p-4">
+                <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-amber-400/30 to-primary/30 blur-2xl" />
                 <div className="relative z-10">
                   <div className="mb-2 flex items-center gap-2">
                     <Crown className="h-5 w-5 text-amber-500" />
@@ -350,7 +351,7 @@ export function Layout({ children }: LayoutProps) {
                   <p className="mb-3 text-xs text-muted-foreground">
                     Unlock AI matching & profile optimization
                   </p>
-                  <Button asChild size="sm" className="pressable h-8 w-full rounded-full bg-gradient-to-r from-amber-500 to-pink-500 text-xs font-semibold shadow-md">
+                  <Button asChild size="sm" className="premium-cta pressable h-9 w-full rounded-full text-xs font-bold shadow-none">
                     <Link to="/subscriptions">
                       Upgrade Now
                     </Link>
@@ -384,12 +385,12 @@ export function Layout({ children }: LayoutProps) {
         </aside>
 
         {/* Main Content Area */}
-        <section className="relative m-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-[#fff9fc] dark:bg-[#211219] md:m-2 md:ml-2 md:rounded-[22px] md:bg-background/70 md:dark:bg-background/70">
+        <section className="relative m-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-transparent md:m-3 md:ml-2 md:rounded-[26px] md:bg-white/54 md:ring-1 md:ring-white/70 md:backdrop-blur-xl md:dark:bg-white/[0.035] md:dark:ring-white/10">
           {/* Mobile Header */}
           <div
             className={cn(
-              "sticky top-0 z-40 bg-[#fff9fc]/95 px-5 pb-3 pt-5 backdrop-blur-md dark:bg-[#211219]/95 md:hidden",
-              isScrolled && "shadow-[0_12px_28px_rgba(173,38,95,0.10)] dark:shadow-[0_12px_28px_rgba(0,0,0,0.26)]"
+              "sticky top-0 z-40 bg-white/78 px-4 pb-3 pt-4 backdrop-blur-xl dark:bg-slate-950/72 md:hidden",
+              isScrolled && "shadow-[0_16px_36px_rgba(15,23,42,0.10)] dark:shadow-[0_16px_36px_rgba(0,0,0,0.28)]"
             )}
           >
             <div className="flex items-center justify-between gap-3">
@@ -398,7 +399,7 @@ export function Layout({ children }: LayoutProps) {
                   <button
                     type="button"
                     onClick={() => navigate(-1)}
-                    className="pressable flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-[0_8px_20px_rgba(173,38,95,0.12)] ring-1 ring-primary/10 dark:bg-white/10 dark:text-rose-100 dark:ring-white/10"
+                    className="pressable flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-primary shadow-[0_10px_24px_rgba(15,23,42,0.10)] ring-1 ring-black/5 dark:bg-white/10 dark:text-rose-100 dark:ring-white/10"
                     aria-label="Go back"
                   >
                     <ArrowLeft className="h-4 w-4" />
@@ -406,7 +407,7 @@ export function Layout({ children }: LayoutProps) {
                 ) : (
                   <Link
                     to="/browse"
-                    className="pressable flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-[0_8px_20px_rgba(173,38,95,0.12)] ring-1 ring-primary/10 dark:bg-white/10 dark:ring-white/10"
+                    className="pressable flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.10)] ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10"
                     aria-label="Vivah dashboard"
                   >
                     <img
@@ -418,10 +419,10 @@ export function Layout({ children }: LayoutProps) {
                 )}
 
                 <div className="min-w-0">
-                  <p className="text-[11px] font-medium leading-none text-slate-500 dark:text-rose-100/60">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] leading-none text-slate-500 dark:text-rose-100/60">
                     {mobileEyebrow}
                   </p>
-                  <h1 className="mt-1 truncate text-lg font-bold leading-tight text-slate-900 dark:text-rose-50">
+                  <h1 className="mt-1 truncate font-serif text-xl font-bold leading-tight text-slate-950 dark:text-rose-50">
                     {mobileTitle}
                   </h1>
                 </div>
@@ -437,12 +438,12 @@ export function Layout({ children }: LayoutProps) {
           {/* Desktop Header */}
           <header
             className={cn(
-              "hidden shrink-0 items-center justify-between px-7 transition-[background-color,border-color] duration-150 md:flex",
-              isScrolled && "border-b border-border/60 bg-background/90 backdrop-blur-md"
+              "hidden shrink-0 items-center justify-between px-7 py-5 transition-[background-color,border-color] duration-150 md:flex",
+              isScrolled && "border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/40"
             )}
           >
             <div>
-              <h1 className="text-xl font-bold text-foreground">{pageTitle}</h1>
+              <h1 className="font-serif text-2xl font-bold text-foreground">{pageTitle}</h1>
               <p className="text-xs text-muted-foreground">
                 {activeItem?.aiGated && !aiAccessReady && "Premium feature"}
               </p>
@@ -454,7 +455,7 @@ export function Layout({ children }: LayoutProps) {
           <main
             ref={mainRef}
             className={cn(
-              "min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain",
+              "scrollbar-none min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain",
               showMobileBottomNav && "pb-[88px] md:pb-0"
             )}
           >
@@ -475,7 +476,7 @@ export function Layout({ children }: LayoutProps) {
               )}
 
               {mobileOpen && (
-                <div className="absolute inset-x-4 bottom-[92px] z-50 rounded-[24px] border border-white/90 bg-white/95 p-3 shadow-[0_24px_56px_rgba(173,38,95,0.18)] backdrop-blur-md dark:border-white/10 dark:bg-[#291721]/95 dark:shadow-[0_24px_56px_rgba(0,0,0,0.38)] md:hidden">
+              <div className="absolute inset-x-4 bottom-[92px] z-50 rounded-[26px] border border-white/80 bg-white/92 p-3 shadow-[0_24px_56px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/92 dark:shadow-[0_24px_56px_rgba(0,0,0,0.38)] md:hidden">
                   <div className="mb-3 flex items-center justify-between gap-3 px-1">
                     <div className="flex min-w-0 items-center gap-3">
                       <UserAvatar name={profile?.name || "Member"} avatarUrl={profile?.avatar_url} size="sm" />
@@ -542,7 +543,7 @@ export function Layout({ children }: LayoutProps) {
               )}
 
               <nav className="absolute inset-x-0 bottom-0 z-50 px-4 pb-3 md:hidden" aria-label="Mobile navigation">
-                <div className="flex h-16 items-center justify-between rounded-[24px] border border-sidebar-border bg-gradient-to-b from-sidebar to-sidebar/95 px-3 text-sidebar-foreground shadow-[0_18px_40px_rgba(32,18,26,0.28)] backdrop-blur-md">
+                <div className="flex h-16 items-center justify-between rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--sidebar)),hsl(226_34%_11%))] px-3 text-sidebar-foreground shadow-[0_18px_44px_rgba(15,23,42,0.32)] backdrop-blur-xl">
                   {mobilePrimaryNavItems.map((item) => {
                     const Icon = item.icon;
                     const isLocked = item.aiGated && !aiAccessReady;

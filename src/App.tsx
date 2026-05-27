@@ -24,6 +24,7 @@ const lazyWithPreload = <T extends ComponentType<any>>(
 
 const Login = lazyWithPreload(() => import("@/pages/Login"));
 const Signup = lazyWithPreload(() => import("@/pages/Signup"));
+const Landing = lazyWithPreload(() => import("@/pages/Landing"));
 const ProfilePage = lazyWithPreload(() => import("@/pages/Profile"));
 const Browse = lazyWithPreload(() => import("@/pages/Browse"));
 const UserProfile = lazyWithPreload(() => import("@/pages/UserProfile"));
@@ -36,7 +37,7 @@ const AiMatch = lazyWithPreload(() => import("@/pages/AiMatch"));
 const ProfileOptimizer = lazyWithPreload(() => import("@/pages/ProfileOptimizer"));
 const NotFound = lazyWithPreload(() => import("@/pages/not-found"));
 
-const publicRoutePreloads = [Login.preload, Signup.preload, NotFound.preload];
+const publicRoutePreloads = [Landing.preload, Login.preload, Signup.preload, NotFound.preload];
 const protectedRoutePreloads = [
   ProfilePage.preload,
   Browse.preload,
@@ -162,7 +163,7 @@ function HomeRedirect() {
     return <PageLoader />;
   }
 
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) return <Landing />;
   if (!profile) return <Navigate to="/profile/create" replace />;
   return <Navigate to="/browse" replace />;
 }

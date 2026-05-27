@@ -266,3 +266,324 @@ VALUES
   ('Gold', 'Enhanced features', 999, 50, '["AI Matchmaking", "Profile Optimizer"]', true),
   ('Diamond', 'Full experience', 1999, 100, '["AI Matchmaking", "Profile Optimizer", "Voice Intro"]', true)
 ON CONFLICT DO NOTHING;
+
+-- ============================================================================
+-- 6. FEATURE MIGRATION: LIMITS, RECOVERABLE MESSAGE ENCRYPTION, REPORT EVIDENCE
+-- ============================================================================
+
+ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS profile_view_limit_monthly INTEGER NOT NULL DEFAULT 20;
+ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS ai_token_limit_monthly INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE subscription_plans ADD COLUMN IF NOT EXISTS message_limit_monthly INTEGER;
+
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS ciphertext TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS iv TEXT;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS key_version INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS encryption_scheme TEXT NOT NULL DEFAULT 'plaintext_legacy';
+ALTER TABLE messages ALTER COLUMN content DROP NOT NULL;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'messages_content_or_ciphertext_check') THEN
+    ALTER TABLE messages
+      ADD CONSTRAINT messages_content_or_ciphertext_check
+      CHECK (
+        (content IS NOT NULL AND LENGTH(TRIM(content)) > 0)
+        OR (ciphertext IS NOT NULL AND iv IS NOT NULL)
+      );
+  END IF;
+END $$;
+
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS details TEXT;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'open';
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolved_by UUID REFERENCES profiles(id) ON DELETE SET NULL;
+ALTER TABLE reports ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'reports_status_check') THEN
+    ALTER TABLE reports
+      ADD CONSTRAINT reports_status_check
+      CHECK (status IN ('open', 'reviewing', 'resolved', 'dismissed'));
+  END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS profile_views (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  viewer_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  viewed_user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  month_bucket DATE NOT NULL DEFAULT DATE_TRUNC('month', NOW())::date,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(viewer_id, viewed_user_id, month_bucket),
+  CHECK (viewer_id != viewed_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS ai_usage_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  feature_name TEXT NOT NULL,
+  estimated_tokens INTEGER NOT NULL CHECK (estimated_tokens > 0),
+  month_bucket DATE NOT NULL DEFAULT DATE_TRUNC('month', NOW())::date,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS message_decryption_audit (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  requested_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  approved_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+  reason TEXT NOT NULL,
+  legal_reference TEXT,
+  status TEXT NOT NULL DEFAULT 'requested' CHECK (status IN ('requested', 'approved', 'denied', 'completed')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  approved_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS report_evidence (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  report_id UUID NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
+  message_id UUID REFERENCES messages(id) ON DELETE SET NULL,
+  sender_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  message_created_at TIMESTAMPTZ,
+  content_snapshot TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_profile_views_viewer_month ON profile_views(viewer_id, month_bucket);
+CREATE INDEX IF NOT EXISTS idx_ai_usage_user_month ON ai_usage_events(user_id, month_bucket);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+CREATE INDEX IF NOT EXISTS idx_report_evidence_report ON report_evidence(report_id);
+
+CREATE OR REPLACE FUNCTION is_admin_user(user_id uuid DEFAULT auth.uid())
+RETURNS BOOLEAN
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM profiles
+    WHERE id = user_id AND role IN ('admin', 'primary_admin')
+  );
+$$;
+
+CREATE OR REPLACE FUNCTION current_subscription_plan(user_id uuid)
+RETURNS TABLE (
+  plan_id uuid,
+  plan_name text,
+  profile_view_limit_monthly int,
+  ai_token_limit_monthly int,
+  message_limit_monthly int
+)
+LANGUAGE SQL
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT sp.id, sp.name, sp.profile_view_limit_monthly, sp.ai_token_limit_monthly, sp.message_limit_monthly
+  FROM user_subscriptions us
+  JOIN subscription_plans sp ON sp.id = us.plan_id
+  WHERE us.user_id = $1
+    AND us.status = 'active'
+    AND us.end_date >= NOW()
+  ORDER BY us.created_at DESC
+  LIMIT 1;
+$$;
+
+CREATE OR REPLACE FUNCTION record_ai_usage(feature_name text, estimated_tokens int)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  requester uuid := auth.uid();
+  requester_role text;
+  month_start date := DATE_TRUNC('month', NOW())::date;
+  monthly_limit int := 0;
+  used_tokens int := 0;
+  requested_tokens int := GREATEST(record_ai_usage.estimated_tokens, 1);
+  requested_feature_name text := record_ai_usage.feature_name;
+BEGIN
+  IF requester IS NULL THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'not_authenticated');
+  END IF;
+
+  SELECT role INTO requester_role FROM profiles WHERE id = requester;
+  IF requester_role IN ('admin', 'primary_admin') THEN
+    INSERT INTO ai_usage_events (user_id, feature_name, estimated_tokens, month_bucket)
+    VALUES (requester, requested_feature_name, requested_tokens, month_start);
+    RETURN jsonb_build_object('allowed', true, 'reason', 'admin_bypass', 'remaining', NULL, 'limit', NULL);
+  END IF;
+
+  SELECT COALESCE(csp.ai_token_limit_monthly, 0)
+  INTO monthly_limit
+  FROM current_subscription_plan(requester) csp
+  LIMIT 1;
+
+  SELECT COALESCE(SUM(aue.estimated_tokens), 0)
+  INTO used_tokens
+  FROM ai_usage_events aue
+  WHERE aue.user_id = requester AND aue.month_bucket = month_start;
+
+  IF monthly_limit <= 0 THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'ai_not_in_plan', 'used', used_tokens, 'requested', requested_tokens, 'remaining', 0, 'limit', monthly_limit);
+  END IF;
+
+  IF used_tokens + requested_tokens > monthly_limit THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'ai_token_limit_exceeded', 'used', used_tokens, 'requested', requested_tokens, 'remaining', GREATEST(monthly_limit - used_tokens, 0), 'limit', monthly_limit);
+  END IF;
+
+  INSERT INTO ai_usage_events (user_id, feature_name, estimated_tokens, month_bucket)
+  VALUES (requester, requested_feature_name, requested_tokens, month_start);
+
+  RETURN jsonb_build_object('allowed', true, 'used', used_tokens + requested_tokens, 'requested', requested_tokens, 'remaining', GREATEST(monthly_limit - used_tokens - requested_tokens, 0), 'limit', monthly_limit);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION record_ai_usage(text, int) TO authenticated;
+
+CREATE OR REPLACE FUNCTION record_profile_view(viewed_user_id uuid)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  viewer uuid := auth.uid();
+  viewer_role text;
+  month_start date := DATE_TRUNC('month', NOW())::date;
+  monthly_limit int := 20;
+  used_count int := 0;
+  already_viewed boolean := false;
+  has_block boolean := false;
+BEGIN
+  IF viewer IS NULL THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'not_authenticated');
+  END IF;
+
+  IF viewer = record_profile_view.viewed_user_id THEN
+    RETURN jsonb_build_object('allowed', true, 'reason', 'self_view', 'remaining', NULL, 'limit', NULL);
+  END IF;
+
+  SELECT role INTO viewer_role FROM profiles WHERE id = viewer;
+  IF viewer_role IN ('admin', 'primary_admin') THEN
+    RETURN jsonb_build_object('allowed', true, 'reason', 'admin_bypass', 'remaining', NULL, 'limit', NULL);
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM user_blocks
+    WHERE (blocker_id = viewer AND blocked_id = record_profile_view.viewed_user_id)
+       OR (blocker_id = record_profile_view.viewed_user_id AND blocked_id = viewer)
+  ) INTO has_block;
+
+  IF has_block THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'blocked');
+  END IF;
+
+  SELECT COALESCE(csp.profile_view_limit_monthly, 20)
+  INTO monthly_limit
+  FROM current_subscription_plan(viewer) csp
+  LIMIT 1;
+
+  IF monthly_limit IS NULL OR monthly_limit < 0 THEN
+    INSERT INTO profile_views (viewer_id, viewed_user_id, month_bucket)
+    VALUES (viewer, record_profile_view.viewed_user_id, month_start)
+    ON CONFLICT DO NOTHING;
+    RETURN jsonb_build_object('allowed', true, 'remaining', NULL, 'limit', monthly_limit);
+  END IF;
+
+  SELECT EXISTS (
+    SELECT 1 FROM profile_views
+    WHERE viewer_id = viewer
+      AND profile_views.viewed_user_id = record_profile_view.viewed_user_id
+      AND month_bucket = month_start
+  ) INTO already_viewed;
+
+  SELECT COUNT(*) INTO used_count
+  FROM profile_views
+  WHERE viewer_id = viewer AND month_bucket = month_start;
+
+  IF already_viewed THEN
+    RETURN jsonb_build_object('allowed', true, 'already_viewed', true, 'remaining', GREATEST(monthly_limit - used_count, 0), 'limit', monthly_limit);
+  END IF;
+
+  IF used_count >= monthly_limit THEN
+    RETURN jsonb_build_object('allowed', false, 'reason', 'profile_view_limit_exceeded', 'remaining', 0, 'limit', monthly_limit);
+  END IF;
+
+  INSERT INTO profile_views (viewer_id, viewed_user_id, month_bucket)
+  VALUES (viewer, record_profile_view.viewed_user_id, month_start)
+  ON CONFLICT DO NOTHING;
+
+  RETURN jsonb_build_object('allowed', true, 'already_viewed', false, 'remaining', GREATEST(monthly_limit - used_count - 1, 0), 'limit', monthly_limit);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION record_profile_view(uuid) TO authenticated;
+
+ALTER TABLE profile_views ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_usage_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE message_decryption_audit ENABLE ROW LEVEL SECURITY;
+ALTER TABLE report_evidence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can create reports" ON reports;
+CREATE POLICY "Users can create reports" ON reports FOR INSERT TO authenticated WITH CHECK (reporter_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users and admins can view reports" ON reports;
+CREATE POLICY "Users and admins can view reports" ON reports FOR SELECT TO authenticated USING (reporter_id = auth.uid() OR is_admin_user());
+
+DROP POLICY IF EXISTS "Admins can update reports" ON reports;
+CREATE POLICY "Admins can update reports" ON reports FOR UPDATE TO authenticated USING (is_admin_user()) WITH CHECK (is_admin_user());
+
+DROP POLICY IF EXISTS "Users can view own profile view usage" ON profile_views;
+CREATE POLICY "Users can view own profile view usage" ON profile_views FOR SELECT TO authenticated USING (viewer_id = auth.uid() OR is_admin_user());
+
+DROP POLICY IF EXISTS "Users can view own AI usage" ON ai_usage_events;
+CREATE POLICY "Users can view own AI usage" ON ai_usage_events FOR SELECT TO authenticated USING (user_id = auth.uid() OR is_admin_user());
+
+DROP POLICY IF EXISTS "Admins can view decryption audit" ON message_decryption_audit;
+CREATE POLICY "Admins can view decryption audit" ON message_decryption_audit FOR SELECT TO authenticated USING (is_admin_user());
+
+DROP POLICY IF EXISTS "Report evidence visible to reporter and admins" ON report_evidence;
+CREATE POLICY "Report evidence visible to reporter and admins" ON report_evidence
+  FOR SELECT TO authenticated
+  USING (
+    is_admin_user()
+    OR EXISTS (
+      SELECT 1 FROM reports
+      WHERE reports.id = report_evidence.report_id
+        AND reports.reporter_id = auth.uid()
+    )
+  );
+
+DROP POLICY IF EXISTS "Users can create report evidence for own reports" ON report_evidence;
+CREATE POLICY "Users can create report evidence for own reports" ON report_evidence
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM reports
+      WHERE reports.id = report_evidence.report_id
+        AND reports.reporter_id = auth.uid()
+    )
+  );
+
+-- Subscription plan policies
+-- Required when RLS is enabled on subscription_plans. Without these, admin updates
+-- can silently affect zero visible rows from the browser client.
+ALTER TABLE subscription_plans ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view active subscription plans" ON subscription_plans;
+CREATE POLICY "Users can view active subscription plans" ON subscription_plans
+  FOR SELECT TO authenticated
+  USING (is_active = true OR is_admin_user());
+
+DROP POLICY IF EXISTS "Admins can manage subscription plans" ON subscription_plans;
+CREATE POLICY "Admins can manage subscription plans" ON subscription_plans
+  FOR ALL TO authenticated
+  USING (is_admin_user())
+  WITH CHECK (is_admin_user());
+
+UPDATE subscription_plans SET profile_view_limit_monthly = 20, ai_token_limit_monthly = 0 WHERE name = 'Free';
+UPDATE subscription_plans SET profile_view_limit_monthly = 100, ai_token_limit_monthly = 50000 WHERE name = 'Gold';
+UPDATE subscription_plans SET profile_view_limit_monthly = -1, ai_token_limit_monthly = 200000 WHERE name = 'Diamond';

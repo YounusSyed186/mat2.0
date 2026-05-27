@@ -51,7 +51,7 @@ export const ProfileCard = memo(function ProfileCard({
   return (
     <Card
       className={cn(
-        "interactive-surface group h-full border-card-border bg-card shadow-sm",
+        "premium-card interactive-surface group h-full overflow-hidden rounded-[26px] shadow-none",
         className
       )}
       data-testid={`card-profile-${profile.id}`}
@@ -76,7 +76,7 @@ export const ProfileCard = memo(function ProfileCard({
                 aria-pressed={isSaved}
                 aria-label={isSaved ? "Remove saved profile" : "Save profile"}
                 className={cn(
-                  "pressable flex h-8 w-8 items-center justify-center rounded-full border border-transparent bg-muted text-muted-foreground",
+                  "pressable flex h-9 w-9 items-center justify-center rounded-full border border-transparent bg-white/70 text-muted-foreground shadow-sm dark:bg-white/10",
                   isSaved && "bg-primary/10 text-primary"
                 )}
               >
@@ -86,7 +86,7 @@ export const ProfileCard = memo(function ProfileCard({
             <Link
               to={profileHref}
               aria-label={`View ${profile.name}'s profile`}
-              className="pressable flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-rose-700 group-hover:bg-primary group-hover:text-primary-foreground"
+              className="pressable flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
             >
               <ArrowRight className="h-4 w-4" />
             </Link>
@@ -94,7 +94,7 @@ export const ProfileCard = memo(function ProfileCard({
         </div>
 
         {hasSimilarity && (
-          <div className="mt-4 inline-flex w-fit items-center gap-1 rounded-full bg-violet-100 px-2.5 py-1 text-xs font-semibold text-violet-700">
+          <div className="mt-4 inline-flex w-fit items-center gap-1 rounded-full bg-teal-500/10 px-2.5 py-1 text-xs font-bold text-teal-700 dark:text-teal-200">
             <Sparkles className="h-3.5 w-3.5" />
             {Math.round(similarity * 100)}% Match
           </div>
@@ -105,7 +105,7 @@ export const ProfileCard = memo(function ProfileCard({
             {matchReasons.map((reason) => (
               <span
                 key={reason}
-                className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary"
+                className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary"
               >
                 {reason}
               </span>
@@ -136,13 +136,13 @@ export const ProfileCard = memo(function ProfileCard({
 
         <div className="mt-auto flex flex-wrap gap-2 pt-5">
           {profile.religion && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-950/5 px-2.5 py-1 text-xs font-bold text-muted-foreground dark:bg-white/10">
               <Heart className="h-3.5 w-3.5 text-rose-500" />
               {profile.religion}
             </span>
           )}
           {profile.search_intent && (
-            <span className="inline-flex rounded-full bg-[#fff0f5] px-2.5 py-1 text-xs font-medium text-primary">
+            <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
               {profile.search_intent}
             </span>
           )}
@@ -150,14 +150,14 @@ export const ProfileCard = memo(function ProfileCard({
 
         <div className="mt-5 grid grid-cols-2 gap-2">
           {relationStatus === "accepted" ? (
-            <Button asChild size="sm" className="pressable gap-2">
+            <Button asChild size="sm" className="premium-cta pressable gap-2 rounded-full shadow-none">
               <Link to={`/chat/${profile.id}`}>
                 <MessageCircle className="h-3.5 w-3.5" />
                 Chat
               </Link>
             </Button>
           ) : relationStatus === "received_pending" ? (
-            <Button asChild size="sm" className="pressable gap-2">
+            <Button asChild size="sm" className="premium-cta pressable gap-2 rounded-full shadow-none">
               <Link to="/interests">
                 <Heart className="h-3.5 w-3.5" />
                 Review
@@ -183,7 +183,7 @@ export const ProfileCard = memo(function ProfileCard({
               size="sm"
               onClick={() => onSendInterest?.(profile.id)}
               disabled={!canSendInterest || actionLoading}
-              className="pressable gap-2"
+              className="premium-cta pressable gap-2 rounded-full shadow-none"
             >
               {actionLoading ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -194,7 +194,7 @@ export const ProfileCard = memo(function ProfileCard({
             </Button>
           )}
 
-          <Button asChild size="sm" variant="outline" className="pressable gap-2">
+          <Button asChild size="sm" variant="outline" className="pressable gap-2 rounded-full bg-white/60 shadow-none dark:bg-white/5">
             <Link to={profileHref}>
               <CheckCircle2 className="h-3.5 w-3.5" />
               View Profile

@@ -61,7 +61,7 @@ export default function Signup() {
       actionButtonLabel="Login"
       visualMeta="New beginnings"
     >
-      <form onSubmit={handleSignup} className="space-y-4">
+      <form onSubmit={handleSignup} className="premium-card rounded-[28px] p-4 space-y-4 sm:p-5">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -71,7 +71,7 @@ export default function Signup() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="h-12 rounded-xl px-4 shadow-none"
+            className="h-12 rounded-2xl bg-white/70 px-4 shadow-none dark:bg-white/5"
             data-testid="input-email"
           />
         </div>
@@ -84,7 +84,7 @@ export default function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="h-12 rounded-xl px-4 shadow-none"
+            className="h-12 rounded-2xl bg-white/70 px-4 shadow-none dark:bg-white/5"
             data-testid="input-password"
           />
         </div>
@@ -97,14 +97,14 @@ export default function Signup() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            className="h-12 rounded-xl px-4 shadow-none"
+            className="h-12 rounded-2xl bg-white/70 px-4 shadow-none dark:bg-white/5"
             data-testid="input-confirm-password"
           />
         </div>
 
         <div className="relative py-3">
           <Separator />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-4 text-xs text-muted-foreground">
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-xs text-muted-foreground dark:bg-slate-900">
             or
           </span>
         </div>
@@ -112,7 +112,7 @@ export default function Signup() {
         <Button
           type="button"
           variant="outline"
-          className="h-12 w-full rounded-xl gap-2 shadow-none"
+          className="h-12 w-full rounded-2xl gap-2 bg-white/70 shadow-none dark:bg-white/5"
           onClick={handleGoogleSignup}
           disabled={googleLoading}
           data-testid="button-google-signup"
@@ -126,7 +126,7 @@ export default function Signup() {
           {googleLoading ? "Redirecting..." : "Sign up with Google"}
         </Button>
 
-        <Button type="submit" className="h-12 w-full rounded-full text-sm font-bold" disabled={loading} data-testid="button-signup">
+        <Button type="submit" className="premium-cta h-12 w-full rounded-full text-sm font-bold shadow-none" disabled={loading} data-testid="button-signup">
           {loading ? "Creating account..." : "Create account"}
         </Button>
       </form>

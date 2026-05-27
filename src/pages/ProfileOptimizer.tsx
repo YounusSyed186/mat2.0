@@ -20,6 +20,7 @@ import { Layout } from "@/components/Layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AiUsageStatus } from "@/components/AiUsageStatus";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { useAuth } from "@/context/AuthContext";
@@ -248,7 +249,16 @@ function OptimizationFieldCard({
 export default function ProfileOptimizer() {
   const { profile, refetchProfile, session } = useAuth();
   const { toast } = useToast();
-  const { hasAccess, isLoading: accessLoading } = useAiAccess();
+  const {
+    hasAccess,
+    isLoading: accessLoading,
+    planName,
+    aiTokenLimit,
+    aiTokensUsed,
+    aiTokensRemaining,
+    usageLoading,
+    refreshUsage,
+  } = useAiAccess();
   const { optimizationResult, setOptimizationData } = useAiStore();
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -379,7 +389,8 @@ export default function ProfileOptimizer() {
     setAppliedFields(new Set());
 
     try {
-      const analysis = await generateProfileOptimization(profile);
+      const analysisResult = await generateProfileOptimization(profile) as unknown as OptimizationResult;
+      const analysis = { ...analysisResult, tips: analysisResult.tips || [] };
       setResult(analysis);
       setOptimizationData(analysis);
       toast({
@@ -395,6 +406,7 @@ export default function ProfileOptimizer() {
       });
     } finally {
       setIsAnalyzing(false);
+      refreshUsage();
     }
   };
 
@@ -421,7 +433,7 @@ export default function ProfileOptimizer() {
 
       try {
         const embeddingText = buildEmbeddingText(updates);
-        const newEmbedding = await generateEmbedding(embeddingText);
+        const newEmbedding = await generateEmbedding(embeddingText, { featureName: "profile_optimizer_embedding" });
         updates.embedding = `[${newEmbedding.join(",")}]`;
         updates.needs_embedding = false;
       } catch (embErr) {
@@ -449,6 +461,7 @@ export default function ProfileOptimizer() {
       });
     } finally {
       setApplyingTarget(null);
+      refreshUsage();
     }
   };
 
@@ -494,6 +507,15 @@ export default function ProfileOptimizer() {
     <Layout>
       <div className="min-h-full bg-[linear-gradient(135deg,hsl(var(--background)),hsl(var(--accent)/0.22)_46%,hsl(var(--secondary)/0.5))] p-3 pb-24 sm:p-5 lg:p-8">
         <div className="mx-auto max-w-[1180px] space-y-6">
+          <AiUsageStatus
+            planName={planName}
+            used={aiTokensUsed}
+            limit={aiTokenLimit}
+            remaining={aiTokensRemaining}
+            isLoading={usageLoading}
+            onRefresh={refreshUsage}
+          />
+
           <section className="rounded-lg border border-border/70 bg-card/95 p-5 shadow-sm sm:p-6">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex items-start gap-4">

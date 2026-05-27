@@ -71,7 +71,7 @@ export default function Login() {
       actionButtonLabel="Join Us"
       visualMeta="Meaningful beginnings"
     >
-      <form onSubmit={handleLogin} className="space-y-4">
+      <form onSubmit={handleLogin} className="premium-card rounded-[28px] p-4 space-y-4 sm:p-5">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -81,7 +81,7 @@ export default function Login() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="h-12 rounded-xl px-4 shadow-none"
+            className="h-12 rounded-2xl bg-white/70 px-4 shadow-none dark:bg-white/5"
             data-testid="input-email"
           />
         </div>
@@ -94,7 +94,7 @@ export default function Login() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="h-12 rounded-xl px-4 shadow-none"
+            className="h-12 rounded-2xl bg-white/70 px-4 shadow-none dark:bg-white/5"
             data-testid="input-password"
           />
         </div>
@@ -112,7 +112,7 @@ export default function Login() {
 
         <div className="relative py-3">
           <Separator />
-          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-4 text-xs text-muted-foreground">
+          <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white px-4 text-xs text-muted-foreground dark:bg-slate-900">
             or
           </span>
         </div>
@@ -120,7 +120,7 @@ export default function Login() {
         <Button
           type="button"
           variant="outline"
-          className="h-12 w-full rounded-xl gap-2 shadow-none"
+          className="h-12 w-full rounded-2xl gap-2 bg-white/70 shadow-none dark:bg-white/5"
           onClick={handleGoogleLogin}
           disabled={googleLoading}
           data-testid="button-google-login"
@@ -134,7 +134,7 @@ export default function Login() {
           {googleLoading ? "Redirecting..." : "Login with Google"}
         </Button>
 
-        <Button type="submit" className="h-12 w-full rounded-full text-sm font-bold" disabled={loading} data-testid="button-login">
+        <Button type="submit" className="premium-cta h-12 w-full rounded-full text-sm font-bold shadow-none" disabled={loading} data-testid="button-login">
           {loading ? "Signing in..." : "Login"}
         </Button>
       </form>

@@ -263,7 +263,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
         form.search_intent,
       ].filter(Boolean).join(' ');
 
-      const embedding = await generateEmbedding(profileText);
+      const embedding = await generateEmbedding(profileText, { billable: false, featureName: "profile_embedding" });
       if (embedding) {
         coreData.embedding = `[${embedding.join(",")}]`;
         coreData.needs_embedding = false;

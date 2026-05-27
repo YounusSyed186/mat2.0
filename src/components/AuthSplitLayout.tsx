@@ -95,16 +95,16 @@ export function AuthSplitLayout({
   };
 
   return (
-    <div className="h-[100dvh] overflow-hidden bg-card p-0 text-foreground lg:bg-[#eeeeed] lg:px-[0.5vw] lg:py-[0.5dvh]">
+    <div className="premium-shell-bg h-[100dvh] overflow-hidden p-0 text-foreground lg:px-3 lg:py-3">
       <div
         className={cn(
-          "relative mx-auto grid h-full min-h-0 w-full max-w-none overflow-hidden rounded-none bg-card shadow-none lg:rounded-[32px] lg:shadow-[0_32px_90px_rgba(49,39,35,0.18)]",
+          "relative mx-auto grid h-full min-h-0 w-full max-w-[1580px] overflow-hidden rounded-none border-white/70 bg-white/76 shadow-none backdrop-blur-2xl dark:bg-slate-950/58 dark:ring-white/10 lg:rounded-[32px] lg:ring-1 lg:shadow-[0_32px_90px_rgba(15,23,42,0.18)]",
           wide
             ? "lg:grid-cols-[minmax(360px,0.78fr)_minmax(0,1.22fr)]"
             : "lg:grid-cols-[minmax(0,1.02fr)_minmax(410px,0.98fr)]"
         )}
       >
-        <aside className="relative hidden min-h-0 overflow-hidden bg-[#130d11] lg:block">
+        <aside className="relative hidden min-h-0 overflow-hidden bg-slate-950 lg:block">
           {authVisualSlides.map((slide, index) => (
             <img
               key={slide.src}
@@ -122,8 +122,8 @@ export function AuthSplitLayout({
               aria-hidden={index !== activeVisualIndex}
             />
           ))}
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,8,10,0.58),rgba(10,8,10,0.14)_42%,rgba(10,8,10,0.76))]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.16),transparent_32%)]" />
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(10,14,28,0.72),rgba(10,14,28,0.14)_42%,rgba(10,14,28,0.86))]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(251,113,133,0.24),transparent_32%),radial-gradient(circle_at_78%_26%,rgba(45,212,191,0.18),transparent_30%)]" />
 
           <div className="relative z-10 flex h-full flex-col justify-between p-8 text-white xl:p-10">
             <div className="flex items-center justify-between gap-4">
@@ -139,7 +139,7 @@ export function AuthSplitLayout({
                     asChild
                     variant="outline"
                     size="sm"
-                    className="rounded-full border-white/70 bg-white/8 px-5 text-white shadow-none backdrop-blur hover:bg-white/14"
+                    className="rounded-full border-white/30 bg-white/10 px-5 text-white shadow-none backdrop-blur hover:bg-white/16 hover:text-white"
                   >
                     <Link to={actionHref}>{actionButtonLabel ?? actionLabel}</Link>
                   </Button>
@@ -152,13 +152,13 @@ export function AuthSplitLayout({
                 <Sparkles className="h-3.5 w-3.5" />
                 {visualMeta}
               </div>
-              <h2 className="text-4xl font-black leading-tight tracking-normal xl:text-5xl">{visualTitle}</h2>
+              <h2 className="font-serif text-4xl font-bold leading-tight tracking-normal xl:text-5xl">{visualTitle}</h2>
               <p className="mt-4 max-w-xs text-sm leading-6 text-white/78">{visualSubtitle}</p>
             </div>
 
             <div className="flex items-end justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-primary shadow-lg">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-primary shadow-lg">
                   <HeartHandshake className="h-6 w-6" />
                 </span>
                 <div>
@@ -203,7 +203,7 @@ export function AuthSplitLayout({
           </div>
         </aside>
 
-        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-card">
+        <section className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-transparent">
           <div className="relative h-44 overflow-hidden lg:hidden">
             {authVisualSlides.map((slide, index) => (
               <img
@@ -232,7 +232,7 @@ export function AuthSplitLayout({
             </div>
           </div>
 
-          <header className="flex shrink-0 items-center justify-between gap-4 px-6 py-5 sm:px-10 lg:px-12">
+          <header className="flex shrink-0 items-center justify-between gap-4 px-5 py-5 sm:px-10 lg:px-12">
             <Link to="/" className="flex min-w-0 items-center gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-sm ring-1 ring-black/5">
                 <img
@@ -246,13 +246,13 @@ export function AuthSplitLayout({
             </Link>
 
             {actionHref && actionLabel && (
-              <Button asChild variant="outline" size="sm" className="rounded-full px-4 shadow-none">
+              <Button asChild variant="outline" size="sm" className="rounded-full bg-white/60 px-4 shadow-none backdrop-blur dark:bg-white/5">
                 <Link to={actionHref}>{actionLabel}</Link>
               </Button>
             )}
           </header>
 
-          <main className="flex min-h-0 min-w-0 flex-1 overflow-y-auto px-6 pb-8 sm:px-10 lg:px-12">
+          <main className="scrollbar-none flex min-h-0 min-w-0 flex-1 overflow-y-auto px-5 pb-8 sm:px-10 lg:px-12">
             <div
               className={cn(
                 "mx-auto flex w-full flex-1 flex-col justify-center py-4",
@@ -262,7 +262,7 @@ export function AuthSplitLayout({
             >
               <div className="mb-8 text-center">
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">{eyebrow}</p>
-                <h1 className="mt-3 text-4xl font-black leading-tight tracking-normal text-foreground sm:text-5xl">
+                <h1 className="premium-gradient-text mt-3 font-serif text-4xl font-bold leading-tight tracking-normal sm:text-5xl">
                   {title}
                 </h1>
                 <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-muted-foreground">{subtitle}</p>

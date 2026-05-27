@@ -46,12 +46,48 @@ export default function Subscription() {
               .maybeSingle()
           : Promise.resolve({ data: null, error: null });
 
-        const [{ data: plansData }, { data: subData }] = await Promise.all([
+        const [{ data: plansData, error: plansError }, { data: subData, error: subError }] = await Promise.all([
           plansQuery,
           subscriptionQuery,
         ]);
 
         if (!isMounted) return;
+
+        if (plansError) {
+          console.error("[Subscription] Failed to load plans", {
+            message: plansError.message,
+            code: plansError.code,
+            details: plansError.details,
+            hint: plansError.hint,
+            raw: plansError,
+          });
+          toast({
+            title: "Could not load plans",
+            description: plansError.message,
+            variant: "destructive",
+          });
+        }
+
+        if (subError) {
+          console.error("[Subscription] Failed to load active subscription", {
+            message: subError.message,
+            code: subError.code,
+            details: subError.details,
+            hint: subError.hint,
+            raw: subError,
+          });
+        }
+
+        console.info("[Subscription] Loaded subscription data", {
+          userId: currentUser?.id,
+          plans: plansData?.map((plan) => ({
+            id: plan.id,
+            name: plan.name,
+            ai_token_limit_monthly: plan.ai_token_limit_monthly,
+            message_limit_monthly: plan.message_limit_monthly,
+          })),
+          activeSubscription: subData,
+        });
 
         if (plansData) setPlans(plansData as SubscriptionPlan[]);
         if (subData) setActiveSub(subData as UserSubscription);
@@ -86,11 +122,34 @@ export default function Subscription() {
 
       // Cancel existing active subscription if any
       if (activeSub) {
-        await supabase
+        const { error: cancelError } = await supabase
           .from("user_subscriptions")
           .update({ status: "cancelled" })
           .eq("id", activeSub.id);
+
+        if (cancelError) {
+          console.error("[Subscription] Failed to cancel previous subscription", {
+            subscriptionId: activeSub.id,
+            message: cancelError.message,
+            code: cancelError.code,
+            details: cancelError.details,
+            hint: cancelError.hint,
+            raw: cancelError,
+          });
+          throw cancelError;
+        }
       }
+
+      console.info("[Subscription] Creating subscription", {
+        userId: currentUser.id,
+        planId: plan.id,
+        planName: plan.name,
+        ai_token_limit_monthly: plan.ai_token_limit_monthly,
+        message_limit_monthly: plan.message_limit_monthly,
+        billingCycle,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+      });
 
       const { data, error } = await supabase
         .from("user_subscriptions")
@@ -107,6 +166,7 @@ export default function Subscription() {
 
       if (error) throw error;
 
+      console.info("[Subscription] Subscription created", data);
       setActiveSub(data as UserSubscription);
 
       // Auto-generate embedding if this is a Gold or Diamond plan
@@ -114,7 +174,7 @@ export default function Subscription() {
       if (AI_ELIGIBLE_PLANS.includes(plan.name) && profile) {
         try {
           const profileText = `${profile.name} ${profile.age} ${profile.gender} ${profile.religion} ${profile.city} ${profile.profession} ${profile.bio}`;
-          const embedding = await generateEmbedding(profileText);
+          const embedding = await generateEmbedding(profileText, { billable: false, featureName: "subscription_embedding" });
           if (embedding) {
             await supabase
               .from("profiles")
@@ -133,6 +193,13 @@ export default function Subscription() {
           }`,
       });
     } catch (err: any) {
+      console.error("[Subscription] Subscription failed", {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+        raw: err,
+      });
       toast({
         title: "Subscription Failed",
         description: err.message || "An unexpected error occurred",
@@ -158,13 +225,13 @@ export default function Subscription() {
 
   return (
     <Layout>
-      <div className="max-w-5xl mx-auto px-4 py-12">
+      <div className="mx-auto max-w-6xl px-4 py-10 md:py-12">
         <div className="text-center mb-12">
-          <Badge className="mb-4 bg-primary/10 text-primary hover:bg-primary/20 border-primary/20">
+          <Badge className="mb-4 rounded-full border-primary/20 bg-white/70 px-3 py-1.5 text-primary hover:bg-white/70 dark:bg-white/10">
             <Sparkles className="w-3 h-3 mr-1" />
             Premium Features
           </Badge>
-          <h1 className="font-serif text-4xl md:text-5xl font-bold text-foreground mb-4">
+          <h1 className="premium-gradient-text mb-4 font-serif text-4xl font-bold md:text-6xl">
             Find Your Perfect Match
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
@@ -174,10 +241,10 @@ export default function Subscription() {
 
         {activeSub && (
           <div className="mb-12">
-            <Card className="border-primary bg-primary/5">
+            <Card className="premium-card rounded-[30px] border-primary/20 shadow-none">
               <CardContent className="flex flex-col md:flex-row items-center justify-between p-6">
                 <div className="flex items-center gap-4 mb-4 md:mb-0">
-                  <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
                     <Crown className="w-6 h-6 text-primary" />
                   </div>
                   <div>
@@ -188,9 +255,17 @@ export default function Subscription() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <Badge variant="outline" className="text-primary border-primary font-medium">
-                    {activeSub.plan?.interest_limit} Interests / month
-                  </Badge>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Badge variant="outline" className="text-primary border-primary font-medium">
+                      {activeSub.plan?.interest_limit} Interests / month
+                    </Badge>
+                    <Badge variant="outline" className="font-medium">
+                      {(activeSub.plan?.ai_token_limit_monthly || 0).toLocaleString()} AI tokens / month
+                    </Badge>
+                    <Badge variant="outline" className="font-medium">
+                      {activeSub.plan?.message_limit_monthly ?? "Unlimited"} Messages / month
+                    </Badge>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -198,8 +273,8 @@ export default function Subscription() {
         )}
 
         <div className="flex justify-center mb-8">
-          <Tabs value={billingCycle} onValueChange={(v) => setBillingCycle(v as any)} className="w-[400px]">
-            <TabsList className="grid w-full grid-cols-3">
+          <Tabs value={billingCycle} onValueChange={(v) => setBillingCycle(v as any)} className="w-full max-w-[430px]">
+            <TabsList className="grid h-12 w-full grid-cols-3 rounded-full bg-white/70 p-1 shadow-sm backdrop-blur dark:bg-white/5">
               <TabsTrigger value="monthly">Monthly</TabsTrigger>
               <TabsTrigger value="quarterly">Quarterly</TabsTrigger>
               <TabsTrigger value="yearly">
@@ -241,23 +316,23 @@ export default function Subscription() {
               const isCurrentPlan = activeSub?.plan_id === plan.id;
 
               return (
-                <Card
+              <Card
                   key={plan.id}
-                  className={`interactive-surface animate-soft-enter relative flex flex-col ${isPopular
-                      ? 'z-10 border-primary shadow-md md:-translate-y-1'
-                      : 'border-border'
+                  className={`premium-card interactive-surface animate-soft-enter relative flex flex-col overflow-hidden rounded-[30px] shadow-none ${isPopular
+                      ? 'z-10 border-primary/40 md:-translate-y-1'
+                      : ''
                     }`}
                   style={{ animationDelay: `${index * 45}ms` }}
                 >
                   {isPopular && (
                     <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                      <span className="bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                      <span className="premium-cta text-primary-foreground text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-none">
                         Most Popular
                       </span>
                     </div>
                   )}
                   <CardHeader className="text-center pt-8">
-                    <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
+                    <CardTitle className="font-serif text-2xl font-bold">{plan.name}</CardTitle>
                     <CardDescription className="min-h-[40px]">{plan.description}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex-1">
@@ -286,6 +361,24 @@ export default function Subscription() {
                         </span>
                       </div>
 
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Check className="w-3 h-3 text-primary" />
+                        </div>
+                        <span className="text-sm font-medium">
+                          {(plan.ai_token_limit_monthly || 0).toLocaleString()} AI tokens per month
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Check className="w-3 h-3 text-primary" />
+                        </div>
+                        <span className="text-sm font-medium">
+                          {plan.message_limit_monthly ?? "Unlimited"} messages per month
+                        </span>
+                      </div>
+
                       {plan.features?.map((feature: string, i: number) => (
                         <div key={i} className="flex items-center gap-3">
                           <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
@@ -298,7 +391,7 @@ export default function Subscription() {
                   </CardContent>
                   <CardFooter>
                     <Button
-                      className="pressable w-full"
+                      className="premium-cta pressable w-full rounded-full shadow-none"
                       variant={isPopular ? "default" : "outline"}
                       disabled={isCurrentPlan || isProcessing === plan.id}
                       onClick={() => handleSubscribe(plan)}
