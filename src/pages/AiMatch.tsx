@@ -183,8 +183,8 @@ export default function AiMatch() {
     return (
       <Layout>
         <div className="flex min-h-full items-center justify-center p-4 md:p-8">
-        <div className="premium-card flex max-w-2xl flex-col items-center rounded-[34px] p-8 text-center">
-            <div className="flex h-20 w-20 items-center justify-center rounded-[24px] bg-primary/10">
+        <div className="premium-card flex max-w-2xl flex-col items-center rounded-lg p-8 text-center">
+            <div className="flex h-20 w-20 items-center justify-center rounded-xl bg-primary/10">
               <Lock className="h-10 w-10 text-primary" />
             </div>
             <Badge className="mt-6 border-primary/20 bg-primary/10 text-primary">
@@ -212,7 +212,7 @@ export default function AiMatch() {
       <div className="flex min-h-full flex-col">
         <div className="flex items-center justify-between gap-3 border-b border-white/60 bg-white/40 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-white/[0.03] md:px-6">
           <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-sidebar text-white shadow-sm">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-sidebar text-white shadow-sm">
               <Sparkles className="h-4 w-4 text-primary" />
             </div>
             <div>
@@ -245,7 +245,7 @@ export default function AiMatch() {
 
           {!hasSearched ? (
             <div className="flex flex-1 flex-col items-center justify-center pb-8 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-sidebar shadow-[0_16px_32px_rgba(0,0,0,0.14)]">
+              <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-sidebar shadow-[0_16px_32px_rgba(0,0,0,0.14)]">
                 <Heart className="h-8 w-8 fill-primary text-primary" />
               </div>
               <p className="mt-5 text-sm text-muted-foreground">Hi, {profile?.name?.split(" ")[0] || "there"}</p>
@@ -257,7 +257,7 @@ export default function AiMatch() {
                     key={title}
                     type="button"
                     onClick={() => setQuery(prompt)}
-                    className="premium-card rounded-[24px] p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/35"
+                    className="premium-card rounded-xl p-4 text-left transition hover:-translate-y-0.5 hover:border-primary/35"
                   >
                     <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary/10 text-primary">
                       <Icon className="h-4 w-4" />
@@ -270,11 +270,11 @@ export default function AiMatch() {
             </div>
           ) : (
             <div className="flex-1 space-y-5 pb-6">
-              <div className="ml-auto max-w-2xl rounded-[24px] rounded-br-md bg-primary px-4 py-3 text-primary-foreground shadow-sm">
+              <div className="ml-auto max-w-2xl rounded-xl rounded-br-md bg-primary px-4 py-3 text-primary-foreground shadow-sm">
                 <p className="text-sm leading-relaxed">{submittedQuery}</p>
               </div>
 
-              <div className="premium-card mr-auto max-w-4xl rounded-[28px] rounded-bl-md p-4 shadow-none md:p-5">
+              <div className="premium-card mr-auto max-w-4xl rounded-xl rounded-bl-md p-4 shadow-none md:p-5">
                 <div className="mb-4 flex items-center gap-3">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
                     {isSearching && currentPage === 1 ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -322,7 +322,7 @@ export default function AiMatch() {
                         </p>
                       </div>
                     ) : (
-                      <div className="mt-5 overflow-hidden rounded-[24px] border border-card-border bg-background/70">
+                      <div className="mt-5 overflow-hidden rounded-xl border border-card-border bg-background/70">
                         <AnimatedTestimonials
                           autoplay
                           testimonials={matches.map((match) => ({
@@ -353,7 +353,7 @@ export default function AiMatch() {
         </div>
 
         <div className="sticky bottom-0 border-t border-white/60 bg-white/55 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/40 md:px-6">
-          <div className="premium-card mx-auto flex max-w-3xl items-end gap-2 rounded-[24px] p-2 shadow-none">
+          <div className="premium-card mx-auto flex max-w-3xl items-end gap-2 rounded-xl p-2 shadow-none">
             <Textarea
               placeholder="Ask for the kind of partner you want to meet..."
               className="max-h-32 min-h-11 resize-none border-0 bg-transparent px-3 py-3 text-sm shadow-none focus-visible:ring-0"
@@ -370,7 +370,7 @@ export default function AiMatch() {
               onClick={onNewSearch}
               disabled={!query.trim() || isSearching}
               size="icon"
-              className="premium-cta h-10 w-10 shrink-0 rounded-2xl shadow-none"
+              className="premium-cta h-10 w-10 shrink-0 rounded-lg shadow-none"
               aria-label="Send match search"
             >
               {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

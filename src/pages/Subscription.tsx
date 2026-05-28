@@ -241,10 +241,10 @@ export default function Subscription() {
 
         {activeSub && (
           <div className="mb-12">
-            <Card className="premium-card rounded-[30px] border-primary/20 shadow-none">
+            <Card className="premium-card rounded-lg border-primary/20 shadow-none">
               <CardContent className="flex flex-col md:flex-row items-center justify-between p-6">
                 <div className="flex items-center gap-4 mb-4 md:mb-0">
-                  <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Crown className="w-6 h-6 text-primary" />
                   </div>
                   <div>
@@ -318,7 +318,7 @@ export default function Subscription() {
               return (
               <Card
                   key={plan.id}
-                  className={`premium-card interactive-surface animate-soft-enter relative flex flex-col overflow-hidden rounded-[30px] shadow-none ${isPopular
+                  className={`premium-card interactive-surface animate-soft-enter relative flex flex-col overflow-hidden rounded-lg shadow-none ${isPopular
                       ? 'z-10 border-primary/40 md:-translate-y-1'
                       : ''
                     }`}

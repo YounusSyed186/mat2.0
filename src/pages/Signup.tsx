@@ -61,7 +61,7 @@ export default function Signup() {
       actionButtonLabel="Login"
       visualMeta="New beginnings"
     >
-      <form onSubmit={handleSignup} className="premium-card rounded-[28px] p-4 space-y-4 sm:p-5">
+      <form onSubmit={handleSignup} className="premium-card rounded-xl p-4 space-y-4 sm:p-5">
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -71,7 +71,7 @@ export default function Signup() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="h-12 rounded-2xl bg-white/70 px-4 shadow-none dark:bg-white/5"
+            className="h-12 rounded-lg bg-white/70 px-4 shadow-none dark:bg-white/5"
             data-testid="input-email"
           />
         </div>
@@ -84,7 +84,7 @@ export default function Signup() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="h-12 rounded-2xl bg-white/70 px-4 shadow-none dark:bg-white/5"
+            className="h-12 rounded-lg bg-white/70 px-4 shadow-none dark:bg-white/5"
             data-testid="input-password"
           />
         </div>
@@ -97,7 +97,7 @@ export default function Signup() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required
-            className="h-12 rounded-2xl bg-white/70 px-4 shadow-none dark:bg-white/5"
+            className="h-12 rounded-lg bg-white/70 px-4 shadow-none dark:bg-white/5"
             data-testid="input-confirm-password"
           />
         </div>
@@ -112,7 +112,7 @@ export default function Signup() {
         <Button
           type="button"
           variant="outline"
-          className="h-12 w-full rounded-2xl gap-2 bg-white/70 shadow-none dark:bg-white/5"
+          className="h-12 w-full rounded-lg gap-2 bg-white/70 shadow-none dark:bg-white/5"
           onClick={handleGoogleSignup}
           disabled={googleLoading}
           data-testid="button-google-signup"

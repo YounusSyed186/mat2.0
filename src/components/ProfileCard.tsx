@@ -51,7 +51,7 @@ export const ProfileCard = memo(function ProfileCard({
   return (
     <Card
       className={cn(
-        "premium-card interactive-surface group h-full overflow-hidden rounded-[26px] shadow-none",
+        "premium-card interactive-surface group h-full overflow-hidden rounded-xl shadow-none",
         className
       )}
       data-testid={`card-profile-${profile.id}`}

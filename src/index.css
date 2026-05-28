@@ -126,29 +126,22 @@
 
 @layer components {
   .premium-shell-bg {
-    background:
-      radial-gradient(circle at 12% -6%, rgba(225, 29, 91, .17), transparent 34%),
-      radial-gradient(circle at 84% 4%, rgba(20, 184, 166, .13), transparent 32%),
-      linear-gradient(180deg, hsl(var(--background)), hsl(38 44% 94%));
+    background: linear-gradient(180deg, hsl(var(--background)), hsl(38 44% 94%));
   }
 
   .dark .premium-shell-bg {
-    background:
-      radial-gradient(circle at 12% -6%, rgba(244, 63, 94, .22), transparent 34%),
-      radial-gradient(circle at 88% 2%, rgba(20, 184, 166, .17), transparent 32%),
-      linear-gradient(180deg, hsl(var(--background)), hsl(226 31% 9%));
+    background: linear-gradient(180deg, hsl(var(--background)), hsl(226 31% 9%));
   }
 
   .premium-card {
     border: 1px solid hsl(var(--card-border));
-    background: linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(255, 255, 255, .78));
-    box-shadow: 0 18px 50px rgba(20, 24, 43, .08);
-    backdrop-filter: blur(18px);
+    background: rgba(255, 255, 255, .94);
+    box-shadow: 0 10px 28px rgba(20, 24, 43, .06);
   }
 
   .dark .premium-card {
-    background: linear-gradient(180deg, rgba(28, 33, 52, .88), rgba(21, 25, 40, .78));
-    box-shadow: 0 18px 50px rgba(0, 0, 0, .24);
+    background: rgba(28, 33, 52, .9);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .18);
   }
 
   .premium-gradient-text {
@@ -165,7 +158,7 @@
   .premium-cta {
     background: linear-gradient(135deg, #e11d48, #f59e0b);
     color: white;
-    box-shadow: 0 18px 34px rgba(225, 29, 72, .28);
+    box-shadow: 0 10px 24px rgba(225, 29, 72, .2);
   }
 
   .premium-cta:hover {
@@ -179,7 +172,7 @@
 @layer utilities {
   @keyframes soft-enter {
     from {
-      opacity: 0;
+      opacity: 1;
       transform: translate3d(0, 8px, 0);
     }
     to {
@@ -190,12 +183,25 @@
 
   @keyframes soft-pop {
     from {
-      opacity: 0;
+      opacity: 1;
       transform: scale(.98);
     }
     to {
       opacity: 1;
       transform: scale(1);
+    }
+  }
+
+  @keyframes vivah-dot-pulse {
+    0%,
+    80%,
+    100% {
+      opacity: .35;
+      transform: translateY(0) scale(.9);
+    }
+    40% {
+      opacity: 1;
+      transform: translateY(-8px) scale(1);
     }
   }
 
@@ -271,6 +277,35 @@
   }
 
   @media (max-width: 767px) {
+    .mobile-app-shell,
+    .mobile-app-shell *,
+    .mobile-app-shell *::before,
+    .mobile-app-shell *::after {
+      backdrop-filter: none !important;
+      filter: none !important;
+    }
+
+    .mobile-app-shell .premium-card,
+    .mobile-app-shell .interactive-surface,
+    .mobile-app-shell [class*="shadow-"] {
+      box-shadow: 0 6px 18px rgba(15, 23, 42, .08) !important;
+    }
+
+    .dark .mobile-app-shell .premium-card,
+    .dark .mobile-app-shell .interactive-surface,
+    .dark .mobile-app-shell [class*="shadow-"] {
+      box-shadow: 0 6px 18px rgba(0, 0, 0, .18) !important;
+    }
+
+    .mobile-app-shell .interactive-surface,
+    .mobile-app-shell .pressable,
+    .mobile-app-shell .animate-soft-enter,
+    .mobile-app-shell .animate-soft-pop {
+      animation: none !important;
+      transition-duration: 0ms !important;
+      transform: none !important;
+    }
+
     .mobile-app-shell {
       color-scheme: light;
     }
@@ -297,14 +332,6 @@
       border-color: rgba(255, 255, 255, .10);
       background: rgba(41, 23, 33, .94);
       box-shadow: 0 16px 34px rgba(0, 0, 0, .28);
-    }
-
-    .mobile-app-shell .interactive-surface {
-      box-shadow: 0 14px 30px rgba(173, 38, 95, .10);
-    }
-
-    .dark .mobile-app-shell .interactive-surface {
-      box-shadow: 0 14px 30px rgba(0, 0, 0, .24);
     }
 
     .mobile-app-shell [data-testid="notification-bell"],

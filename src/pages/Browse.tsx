@@ -95,7 +95,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
   const [isExpanded, setIsExpanded] = useState(true);
 
   return (
-    <Card className="premium-card rounded-[26px] shadow-none">
+    <Card className="premium-card rounded-xl shadow-none">
       <CardContent className="p-4">
         <div
           className="flex cursor-pointer items-center justify-between"
@@ -120,7 +120,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   value={filters.gender || "all"}
                   onValueChange={(v) => onFilterChange({ gender: v === "all" ? "" : v })}
                 >
-                  <SelectTrigger className="h-10 rounded-2xl bg-white/70 dark:bg-white/5">
+                  <SelectTrigger className="h-10 rounded-lg bg-white/70 dark:bg-white/5">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -142,7 +142,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                     placeholder="Min"
                     value={filters.minAge}
                     onChange={(e) => onFilterChange({ minAge: e.target.value })}
-                    className="h-10 rounded-2xl bg-white/70 dark:bg-white/5"
+                    className="h-10 rounded-lg bg-white/70 dark:bg-white/5"
                   />
                   <span className="text-muted-foreground">-</span>
                   <Input
@@ -152,7 +152,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                     placeholder="Max"
                     value={filters.maxAge}
                     onChange={(e) => onFilterChange({ maxAge: e.target.value })}
-                    className="h-10 rounded-2xl bg-white/70 dark:bg-white/5"
+                    className="h-10 rounded-lg bg-white/70 dark:bg-white/5"
                   />
                 </div>
               </div>
@@ -163,7 +163,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   placeholder="Search city..."
                   value={filters.city}
                   onChange={(e) => onFilterChange({ city: e.target.value })}
-                  className="h-10 rounded-2xl bg-white/70 dark:bg-white/5"
+                  className="h-10 rounded-lg bg-white/70 dark:bg-white/5"
                 />
               </div>
 
@@ -173,7 +173,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   value={filters.religion || "all"}
                   onValueChange={(v) => onFilterChange({ religion: v === "all" ? "" : v })}
                 >
-                  <SelectTrigger className="h-10 rounded-2xl bg-white/70 dark:bg-white/5">
+                  <SelectTrigger className="h-10 rounded-lg bg-white/70 dark:bg-white/5">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -191,7 +191,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   value={filters.profession || "all"}
                   onValueChange={(v) => onFilterChange({ profession: v === "all" ? "" : v })}
                 >
-                  <SelectTrigger className="h-10 rounded-2xl bg-white/70 dark:bg-white/5">
+                  <SelectTrigger className="h-10 rounded-lg bg-white/70 dark:bg-white/5">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -209,7 +209,7 @@ const FilterSection: React.FC<FilterSectionProps> = ({
                   value={filters.education || "all"}
                   onValueChange={(v) => onFilterChange({ education: v === "all" ? "" : v })}
                 >
-                  <SelectTrigger className="h-10 rounded-2xl bg-white/70 dark:bg-white/5">
+                  <SelectTrigger className="h-10 rounded-lg bg-white/70 dark:bg-white/5">
                     <SelectValue placeholder="Any" />
                   </SelectTrigger>
                   <SelectContent>
@@ -505,7 +505,7 @@ export default function Browse() {
             {/* Main Content */}
             <div className="min-w-0 space-y-6">
               {/* Hero Card */}
-              <Card className="mobile-card-custom animate-soft-enter relative isolate overflow-hidden rounded-[30px] border-0 bg-[linear-gradient(135deg,#111827,#be123c_55%,#0f766e)] text-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+              <Card className="mobile-card-custom animate-soft-enter relative isolate overflow-hidden rounded-lg border-0 bg-[linear-gradient(135deg,#111827,#be123c_55%,#0f766e)] text-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
                 <CardContent className="relative p-4 sm:p-6 md:p-8">
                   <div className="relative z-10">
                     <Badge variant="secondary" className="mb-3 bg-white/20 text-white">
@@ -656,7 +656,7 @@ export default function Browse() {
 
                 {/* Empty State */}
                 {!loading && !error && profiles.length === 0 && (
-                  <Card className="premium-card rounded-[28px] shadow-none">
+                  <Card className="premium-card rounded-xl shadow-none">
                     <CardContent className="flex flex-col items-center justify-center py-16 text-center">
                       <div className="mb-4 rounded-full bg-muted p-4">
                         <Search className="h-12 w-12 text-muted-foreground" />
@@ -706,7 +706,7 @@ export default function Browse() {
             {/* Sidebar */}
             <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
               {/* Profile Summary */}
-              <Card className="premium-card rounded-[28px] shadow-none">
+              <Card className="premium-card rounded-xl shadow-none">
                 <CardContent className="p-5">
                   {myProfile ? (
                     <>
@@ -772,7 +772,7 @@ export default function Browse() {
               </Card>
 
               {/* Tips Card */}
-              <Card className="overflow-hidden rounded-[28px] border-0 bg-[linear-gradient(135deg,rgba(245,158,11,0.16),rgba(20,184,166,0.12))] shadow-none">
+              <Card className="overflow-hidden rounded-xl border-0 bg-[linear-gradient(135deg,rgba(245,158,11,0.16),rgba(20,184,166,0.12))] shadow-none">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
                     <Zap className="mt-0.5 h-5 w-5 text-amber-600" />

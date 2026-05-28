@@ -71,7 +71,7 @@ const NavLink = memo(({
           <Link
             to={isLocked ? "/subscriptions" : href}
             className={cn(
-              "group/nav relative flex items-center rounded-2xl text-sm font-semibold transition-[background-color,color,box-shadow,transform] duration-150 ease-out",
+              "group/nav relative flex items-center rounded-lg text-sm font-semibold transition-[background-color,color,box-shadow,transform] duration-150 ease-out",
               compactOnDesktop
                 ? "justify-center gap-0 px-0 py-2.5"
                 : "gap-3 px-3 py-2.5",
@@ -251,7 +251,8 @@ export function Layout({ children }: LayoutProps) {
     ["/browse", "/interests", "/chat", "/ai-match"].includes(href)
   );
 
-  // Handle scroll events for header styling
+  // Handle scroll events for header styling. Mobile uses document scrolling;
+  // desktop keeps the app-style internal scroll container.
   useEffect(() => {
     const mainContent = mainRef.current;
     if (!mainContent) return;
@@ -261,7 +262,7 @@ export function Layout({ children }: LayoutProps) {
       if (frame) return;
 
       frame = window.requestAnimationFrame(() => {
-        const nextScrolled = mainContent.scrollTop > 10;
+        const nextScrolled = mainContent.scrollTop > 10 || window.scrollY > 10;
         setIsScrolled((current) => current === nextScrolled ? current : nextScrolled);
         frame = 0;
       });
@@ -269,25 +270,27 @@ export function Layout({ children }: LayoutProps) {
 
     handleScroll();
     mainContent.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       mainContent.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
   return (
-    <div className="mobile-app-shell premium-shell-bg relative h-[100dvh] overflow-hidden p-0 text-foreground md:px-3 md:py-3">
-      <div className="pointer-events-none fixed inset-0 opacity-80">
+    <div className="mobile-app-shell premium-shell-bg relative min-h-[100svh] overflow-x-hidden p-0 text-foreground md:h-[100dvh] md:overflow-hidden md:px-3 md:py-3">
+      <div className="pointer-events-none fixed inset-0 hidden opacity-80 md:block">
         <div className="absolute inset-x-0 top-0 h-56 bg-[linear-gradient(180deg,rgba(255,255,255,0.68),transparent)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.05),transparent)]" />
         <div className="absolute -left-24 top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -right-28 bottom-24 h-72 w-72 rounded-full bg-teal-500/10 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex h-full w-full max-w-[1660px] overflow-hidden rounded-none bg-white/72 shadow-none ring-1 ring-white/70 backdrop-blur-2xl dark:bg-slate-950/58 dark:ring-white/10 md:rounded-[30px] md:shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
+      <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1660px] rounded-none bg-white/86 shadow-none ring-1 ring-white/70 dark:bg-slate-950/78 dark:ring-white/10 md:h-full md:min-h-0 md:overflow-hidden md:rounded-xl md:shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
         {/* Desktop Sidebar */}
         <aside
           className={cn(
-            "group/sidebar m-3 mr-0 hidden w-[276px] shrink-0 flex-col overflow-hidden rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--sidebar)),hsl(226_34%_11%))] text-sidebar-foreground shadow-[0_24px_70px_rgba(15,23,42,0.34)] md:flex"
+            "group/sidebar m-3 mr-0 hidden w-[276px] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(180deg,hsl(var(--sidebar)),hsl(226_34%_11%))] text-sidebar-foreground shadow-[0_24px_70px_rgba(15,23,42,0.34)] md:flex"
           )}
         >
           <Link
@@ -299,7 +302,7 @@ export function Layout({ children }: LayoutProps) {
                 : "gap-3 px-7"
             )}
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-[0_12px_30px_rgba(0,0,0,0.24)] ring-1 ring-white/50">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-[0_12px_30px_rgba(0,0,0,0.24)] ring-1 ring-white/50">
               <img
                 src={logoSrc}
                 alt="Vivah"
@@ -341,7 +344,7 @@ export function Layout({ children }: LayoutProps) {
 
           <div className={cn("pb-5 transition-[padding] duration-150 ease-out", sidebarCompact ? "px-2" : "px-4")}>
             {!sidebarCompact && (
-              <div className="relative mb-4 overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.06] p-4">
+              <div className="relative mb-4 overflow-hidden rounded-lg border border-white/10 bg-white/[0.06] p-4">
                 <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-amber-400/30 to-primary/30 blur-2xl" />
                 <div className="relative z-10">
                   <div className="mb-2 flex items-center gap-2">
@@ -385,7 +388,7 @@ export function Layout({ children }: LayoutProps) {
         </aside>
 
         {/* Main Content Area */}
-        <section className="relative m-0 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-none bg-transparent md:m-3 md:ml-2 md:rounded-[26px] md:bg-white/54 md:ring-1 md:ring-white/70 md:backdrop-blur-xl md:dark:bg-white/[0.035] md:dark:ring-white/10">
+        <section className="relative m-0 flex min-h-[100svh] min-w-0 flex-1 flex-col rounded-none bg-transparent md:m-3 md:ml-2 md:min-h-0 md:overflow-hidden md:rounded-xl md:bg-white/64 md:ring-1 md:ring-white/70 md:dark:bg-white/[0.045] md:dark:ring-white/10">
           {/* Mobile Header */}
           <div
             className={cn(
@@ -407,7 +410,7 @@ export function Layout({ children }: LayoutProps) {
                 ) : (
                   <Link
                     to="/browse"
-                    className="pressable flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.10)] ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10"
+                    className="pressable flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.10)] ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10"
                     aria-label="Vivah dashboard"
                   >
                     <img
@@ -455,11 +458,11 @@ export function Layout({ children }: LayoutProps) {
           <main
             ref={mainRef}
             className={cn(
-              "scrollbar-none min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain",
+              "min-w-0 flex-1 overflow-x-hidden md:scrollbar-none md:min-h-0 md:overflow-y-auto md:overscroll-contain",
               showMobileBottomNav && "pb-[88px] md:pb-0"
             )}
           >
-            <div className="h-full w-full p-0 md:p-6">
+            <div className="min-h-full w-full p-0 md:p-6">
               {children}
             </div>
           </main>
@@ -469,22 +472,22 @@ export function Layout({ children }: LayoutProps) {
               {mobileOpen && (
                 <button
                   type="button"
-                  className="absolute inset-0 z-40 bg-rose-950/10 backdrop-blur-[1px] dark:bg-black/35 md:hidden"
+                  className="fixed inset-0 z-40 bg-black/70 md:hidden"
                   aria-label="Close menu"
                   onClick={() => setMobileOpen(false)}
                 />
               )}
 
               {mobileOpen && (
-              <div className="absolute inset-x-4 bottom-[92px] z-50 rounded-[26px] border border-white/80 bg-white/92 p-3 shadow-[0_24px_56px_rgba(15,23,42,0.18)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/92 dark:shadow-[0_24px_56px_rgba(0,0,0,0.38)] md:hidden">
+              <div className="fixed inset-x-4 bottom-[92px] z-50 rounded-xl border border-white/10 bg-black p-3 text-white shadow-[0_24px_56px_rgba(0,0,0,0.42)] md:hidden">
                   <div className="mb-3 flex items-center justify-between gap-3 px-1">
                     <div className="flex min-w-0 items-center gap-3">
                       <UserAvatar name={profile?.name || "Member"} avatarUrl={profile?.avatar_url} size="sm" />
                       <div className="min-w-0">
-                        <p className="truncate text-sm font-bold text-slate-900 dark:text-rose-50">
+                        <p className="truncate text-sm font-bold text-white">
                           Hello, {firstName}
                         </p>
-                        <p className="truncate text-xs text-slate-500 dark:text-rose-100/60">
+                        <p className="truncate text-xs text-white/60">
                           {profile?.role === "primary_admin" ? "Admin" : profile?.role || "Member"}
                         </p>
                       </div>
@@ -492,7 +495,7 @@ export function Layout({ children }: LayoutProps) {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 rounded-full text-slate-500 dark:text-rose-100/70 dark:hover:bg-white/10"
+                      className="h-8 w-8 rounded-full text-white/70 hover:bg-white/10 hover:text-white"
                       onClick={() => setMobileOpen(false)}
                       aria-label="Close menu"
                     >
@@ -513,13 +516,13 @@ export function Layout({ children }: LayoutProps) {
                           to={destination}
                           onClick={() => setMobileOpen(false)}
                           className={cn(
-                            "pressable flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm font-semibold transition-colors",
+                            "pressable flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-semibold transition-colors",
                             isActive && !isLocked
-                              ? "bg-primary/10 text-primary shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.08)] dark:bg-primary/20 dark:text-rose-50 dark:shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.18)]"
-                              : "bg-rose-50/60 text-slate-600 hover:bg-primary/5 dark:bg-white/5 dark:text-rose-100/75 dark:hover:bg-white/10 dark:hover:text-rose-50"
+                              ? "bg-primary text-white shadow-none"
+                              : "bg-white/10 text-white/80 hover:bg-white/15 hover:text-white"
                           )}
                         >
-                          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-current shadow-sm dark:bg-white/10">
+                          <span className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-current">
                             <Icon className="h-4 w-4" />
                             {isLocked && (
                               <Lock className="absolute -right-0.5 -top-0.5 h-3 w-3 text-amber-500" />
@@ -533,7 +536,7 @@ export function Layout({ children }: LayoutProps) {
 
                   <Button
                     variant="ghost"
-                    className="mt-3 w-full justify-start rounded-2xl bg-rose-50/70 px-3 text-slate-600 hover:bg-primary/5 dark:bg-white/5 dark:text-rose-100/75 dark:hover:bg-white/10 dark:hover:text-rose-50"
+                    className="mt-3 w-full justify-start rounded-lg bg-white/10 px-3 text-white/80 hover:bg-white/15 hover:text-white"
                     onClick={handleSignOut}
                   >
                     <LogOut className="h-4 w-4" />
@@ -542,8 +545,8 @@ export function Layout({ children }: LayoutProps) {
                 </div>
               )}
 
-              <nav className="absolute inset-x-0 bottom-0 z-50 px-4 pb-3 md:hidden" aria-label="Mobile navigation">
-                <div className="flex h-16 items-center justify-between rounded-[26px] border border-white/10 bg-[linear-gradient(180deg,hsl(var(--sidebar)),hsl(226_34%_11%))] px-3 text-sidebar-foreground shadow-[0_18px_44px_rgba(15,23,42,0.32)] backdrop-blur-xl">
+              <nav className="fixed inset-x-0 bottom-0 z-50 px-4 pb-3 md:hidden" aria-label="Mobile navigation">
+                <div className="flex h-16 items-center justify-between rounded-xl border border-white/10 bg-[linear-gradient(180deg,hsl(var(--sidebar)),hsl(226_34%_11%))] px-3 text-sidebar-foreground shadow-[0_18px_44px_rgba(15,23,42,0.32)] backdrop-blur-xl">
                   {mobilePrimaryNavItems.map((item) => {
                     const Icon = item.icon;
                     const isLocked = item.aiGated && !aiAccessReady;

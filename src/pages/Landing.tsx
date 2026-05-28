@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion, useReducedMotion } from "motion/react";
 import {
   ArrowRight,
   Bot,
@@ -88,26 +87,20 @@ function MotionBlock({
   className?: string;
   id?: string;
 }) {
-  const reduceMotion = useReducedMotion();
-
   return (
-    <motion.section
+    <section
       id={id}
-      initial={reduceMotion ? undefined : { opacity: 0, y: 22 }}
-      whileInView={reduceMotion ? undefined : { opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-90px" }}
-      transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       className={className}
     >
       {children}
-    </motion.section>
+    </section>
   );
 }
 
 function Logo() {
   return (
     <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="Vivah home">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white p-1 shadow-sm ring-1 ring-black/5">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-sm ring-1 ring-black/5">
         <img src={logoSrc} alt="" className="h-full w-full rounded-xl object-cover" />
       </span>
       <span className="truncate font-serif text-xl font-bold text-slate-950 dark:text-white">Vivah</span>
@@ -116,25 +109,20 @@ function Logo() {
 }
 
 function HeroPreview() {
-  const reduceMotion = useReducedMotion();
-
   return (
-    <motion.div
-      initial={reduceMotion ? undefined : { opacity: 0, y: 18, scale: 0.98 }}
-      animate={reduceMotion ? undefined : { opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.75, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+    <div
       className="relative mx-auto mt-9 aspect-[0.82] w-full max-w-sm sm:aspect-[1.03] sm:max-w-2xl lg:mt-0 lg:max-w-none"
     >
       <img
         src={heroImage}
         alt="Wedding couple celebrating a meaningful beginning"
-        className="absolute inset-0 h-full w-full rounded-[28px] object-cover shadow-[0_34px_90px_rgba(15,23,42,0.24)] sm:rounded-[34px]"
+        className="absolute inset-0 h-full w-full rounded-xl object-cover shadow-[0_34px_90px_rgba(15,23,42,0.24)] sm:rounded-lg"
       />
-      <div className="absolute inset-0 rounded-[28px] bg-[linear-gradient(180deg,rgba(10,14,28,0.04),rgba(10,14,28,0.48))] sm:rounded-[34px]" />
+      <div className="absolute inset-0 rounded-xl bg-[linear-gradient(180deg,rgba(10,14,28,0.04),rgba(10,14,28,0.48))] sm:rounded-lg" />
 
-      <div className="premium-card absolute left-4 right-4 top-4 rounded-[24px] p-3 sm:left-6 sm:right-auto sm:w-72">
+      <div className="premium-card absolute left-4 right-4 top-4 rounded-xl p-3 sm:left-6 sm:right-auto sm:w-72">
         <div className="flex items-center gap-3">
-          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Sparkles className="h-5 w-5" />
           </span>
           <div className="min-w-0">
@@ -144,7 +132,7 @@ function HeroPreview() {
         </div>
       </div>
 
-      <div className="premium-card absolute bottom-4 left-4 right-4 rounded-[24px] p-4 sm:bottom-6 sm:left-auto sm:w-80">
+      <div className="premium-card absolute bottom-4 left-4 right-4 rounded-xl p-4 sm:bottom-6 sm:left-auto sm:w-80">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">Compatibility</p>
@@ -162,15 +150,15 @@ function HeroPreview() {
           ))}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 export default function Landing() {
   return (
-    <div className="premium-shell-bg min-h-screen overflow-hidden text-foreground">
+    <div className="premium-shell-bg min-h-screen overflow-x-hidden text-foreground">
       <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-[24px] border border-white/70 bg-white/72 px-3 shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/60">
+        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between rounded-xl border border-white/70 bg-white/72 px-3 shadow-[0_18px_48px_rgba(15,23,42,0.08)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/60">
           <Logo />
           <nav className="hidden items-center gap-7 text-sm font-semibold text-slate-600 dark:text-white/70 md:flex">
             <a href="#journey" className="hover:text-primary">How it works</a>
@@ -216,7 +204,7 @@ export default function Landing() {
               </div>
               <div className="mt-8 grid max-w-xl grid-cols-3 gap-3">
                 {trustStats.map(({ value, label, icon: Icon }) => (
-                  <div key={label} className="premium-card rounded-[22px] p-3">
+                  <div key={label} className="premium-card rounded-lg p-3">
                     <Icon className="h-5 w-5 text-primary" />
                     <p className="mt-3 text-sm font-black">{value}</p>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{label}</p>
@@ -238,9 +226,9 @@ export default function Landing() {
             </div>
             <div className="mt-9 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               {journeySteps.map(({ title, description, icon: Icon }, index) => (
-                <article key={title} className="premium-card rounded-[26px] p-5">
+                <article key={title} className="premium-card rounded-xl p-5">
                   <div className="flex items-center justify-between gap-4">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-lg bg-primary/10 text-primary">
                       <Icon className="h-5 w-5" />
                     </span>
                     <span className="font-serif text-3xl font-bold text-slate-950/12 dark:text-white/12">
@@ -256,7 +244,7 @@ export default function Landing() {
         </MotionBlock>
 
         <MotionBlock id="features" className="px-4 py-16 sm:px-6 lg:px-8">
-          <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[34px] bg-slate-950 text-white shadow-[0_32px_90px_rgba(15,23,42,0.25)] lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="mx-auto grid max-w-7xl overflow-hidden rounded-lg bg-slate-950 text-white shadow-[0_32px_90px_rgba(15,23,42,0.25)] lg:grid-cols-[0.9fr_1.1fr]">
             <div className="p-6 sm:p-10 lg:p-12">
               <Badge className="rounded-full bg-white/10 text-white hover:bg-white/10">
                 <Star className="mr-1.5 h-3.5 w-3.5 fill-current" />
@@ -280,9 +268,9 @@ export default function Landing() {
               <img
                 src={detailImage}
                 alt="Couple holding hands during a quiet moment"
-                className="h-full min-h-[420px] w-full rounded-[28px] object-cover"
+                className="h-full min-h-[420px] w-full rounded-xl object-cover"
               />
-              <div className="absolute inset-x-8 bottom-8 rounded-[26px] border border-white/15 bg-slate-950/62 p-4 backdrop-blur-xl">
+              <div className="absolute inset-x-8 bottom-8 rounded-xl border border-white/15 bg-slate-950/62 p-4 backdrop-blur-xl">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {features.map((feature) => (
                     <div key={feature} className="flex items-start gap-3">
@@ -311,7 +299,7 @@ export default function Landing() {
             </div>
             <div className="mt-9 grid gap-3 md:grid-cols-3">
               {testimonials.map(({ quote, name, detail }) => (
-                <article key={name} className="premium-card rounded-[26px] p-5">
+                <article key={name} className="premium-card rounded-xl p-5">
                   <div className="flex gap-1 text-primary">
                     {Array.from({ length: 5 }).map((_, index) => (
                       <Star key={index} className="h-4 w-4 fill-current" />
@@ -329,7 +317,7 @@ export default function Landing() {
         </MotionBlock>
 
         <section className="px-4 pb-24 pt-8 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-7xl overflow-hidden rounded-[34px] bg-[linear-gradient(135deg,#e11d48,#f59e0b)] p-6 text-white shadow-[0_32px_90px_rgba(225,29,72,0.25)] sm:p-10 lg:p-12">
+          <div className="mx-auto max-w-7xl overflow-hidden rounded-lg bg-[linear-gradient(135deg,#e11d48,#f59e0b)] p-6 text-white shadow-[0_32px_90px_rgba(225,29,72,0.25)] sm:p-10 lg:p-12">
             <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.18em] text-white/76">Begin when you are ready</p>

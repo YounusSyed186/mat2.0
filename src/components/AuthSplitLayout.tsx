@@ -98,7 +98,7 @@ export function AuthSplitLayout({
     <div className="premium-shell-bg h-[100dvh] overflow-hidden p-0 text-foreground lg:px-3 lg:py-3">
       <div
         className={cn(
-          "relative mx-auto grid h-full min-h-0 w-full max-w-[1580px] overflow-hidden rounded-none border-white/70 bg-white/76 shadow-none backdrop-blur-2xl dark:bg-slate-950/58 dark:ring-white/10 lg:rounded-[32px] lg:ring-1 lg:shadow-[0_32px_90px_rgba(15,23,42,0.18)]",
+          "relative mx-auto grid h-full min-h-0 w-full max-w-[1580px] overflow-hidden rounded-none border-white/70 bg-white/76 shadow-none backdrop-blur-2xl dark:bg-slate-950/58 dark:ring-white/10 lg:rounded-xl lg:ring-1 lg:shadow-[0_32px_90px_rgba(15,23,42,0.18)]",
           wide
             ? "lg:grid-cols-[minmax(360px,0.78fr)_minmax(0,1.22fr)]"
             : "lg:grid-cols-[minmax(0,1.02fr)_minmax(410px,0.98fr)]"
@@ -158,7 +158,7 @@ export function AuthSplitLayout({
 
             <div className="flex items-end justify-between gap-4">
               <div className="flex items-center gap-3">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-primary shadow-lg">
+                <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-white text-primary shadow-lg">
                   <HeartHandshake className="h-6 w-6" />
                 </span>
                 <div>
