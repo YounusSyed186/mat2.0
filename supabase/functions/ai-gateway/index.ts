@@ -72,13 +72,14 @@ async function recordUsage(supabase: ReturnType<typeof createClient>, featureNam
   }
 }
 
-const defaultGroqModel = Deno.env.get("GROQ_MODEL") || "llama-3.1-8b-instant";
+const defaultGroqModel = Deno.env.get("GROQ_MODEL") || "llama-3.3-70b-versatile";
 const groqCandidateModels = [
   defaultGroqModel,
   "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
+  "llama-3.1-70b-versatile",
   "llama3-8b-8192",
   "llama3-70b-8192",
+  "llama-3.1-8b-instant",
 ].filter((m, i, arr) => arr.indexOf(m) === i);
 
 async function groqJson(prompt: string) {
