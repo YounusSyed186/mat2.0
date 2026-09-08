@@ -26,7 +26,7 @@ Vivah is a modern, AI-powered matrimonial platform designed to find meaningful l
 ## 🚀 Getting Started
 
 ### 1. Database Setup
-Execute the [supabase-setup.sql](file:///home/younussyed/Projects/mat2.0/supabase-setup.sql) script in your Supabase SQL Editor. This will set up all tables, RLS policies, indexes, and AI functions.
+Execute the [supabase/supabase-setup.sql](supabase/supabase-setup.sql) script in your Supabase SQL Editor. This will set up all tables, RLS policies, indexes, and AI functions.
 
 ### 2. Environment Variables
 Create a `.env` file in the root directory:
@@ -44,8 +44,8 @@ pnpm dev
 ```
 
 ## 📖 Documentation
-- [Architecture & AI Deep Dive](file:///home/younussyed/Projects/mat2.0/ARCHITECTURE.md)
-- [Database Schema (Unified)](file:///home/younussyed/Projects/mat2.0/supabase-setup.sql)
+- [Architecture & AI Deep Dive](ARCHITECTURE.md)
+- [Database Schema (Unified)](supabase/supabase-setup.sql)
 
 ## 🤝 Contributing
 Contributions are welcome! Please follow the existing design system and ensure all AI features are properly gated behind subscription checks.

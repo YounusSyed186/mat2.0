@@ -72,53 +72,94 @@ async function recordUsage(supabase: ReturnType<typeof createClient>, featureNam
   }
 }
 
+const defaultGroqModel = Deno.env.get("GROQ_MODEL") || "llama-3.1-8b-instant";
+const groqCandidateModels = [
+  defaultGroqModel,
+  "llama-3.3-70b-versatile",
+  "llama-3.1-8b-instant",
+  "llama3-8b-8192",
+  "llama3-70b-8192",
+].filter((m, i, arr) => arr.indexOf(m) === i);
+
 async function groqJson(prompt: string) {
   if (!groqApiKey) throw new Error("GROQ_API_KEY is not configured.");
-  const response = await fetch(groqUrl, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${groqApiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: prompt }],
-      response_format: { type: "json_object" },
-      temperature: 0.7,
-    }),
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    const err = new Error(`Groq API error: ${response.status} ${response.statusText}${body ? ` - ${body.slice(0, 300)}` : ""}`) as GatewayError;
-    err.status = response.status;
-    err.stage = "groq_json";
-    throw err;
+  
+  let lastError: GatewayError | null = null;
+  for (const model of groqCandidateModels) {
+    const response = await fetch(groqUrl, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${groqApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      const err = new Error(`Groq API error: ${response.status} ${response.statusText}${body ? ` - ${body.slice(0, 300)}` : ""}`) as GatewayError;
+      err.status = response.status;
+      err.stage = "groq_json";
+      lastError = err;
+      
+      // If model not found (404), try next candidate model
+      if (response.status === 404 && body.includes("model_not_found")) {
+        console.warn(`[ai-gateway] Model ${model} not available on Groq, trying fallback...`);
+        continue;
+      }
+      throw err;
+    }
+
+    const data = await response.json();
+    try {
+      return JSON.parse(data.choices[0].message.content);
+    } catch (error) {
+      throw withStage(error, "groq_json_parse", 502);
+    }
   }
-  const data = await response.json();
-  try {
-    return JSON.parse(data.choices[0].message.content);
-  } catch (error) {
-    throw withStage(error, "groq_json_parse", 502);
-  }
+
+  if (lastError) throw lastError;
+  throw new Error("Failed to process request with available Groq models.");
 }
 
 async function groqText(prompt: string) {
   if (!groqApiKey) throw new Error("GROQ_API_KEY is not configured.");
-  const response = await fetch(groqUrl, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${groqApiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "llama-3.1-8b-instant",
-      messages: [{ role: "user", content: prompt }],
-      temperature: 0.7,
-    }),
-  });
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    const err = new Error(`Groq API error: ${response.status} ${response.statusText}${body ? ` - ${body.slice(0, 300)}` : ""}`) as GatewayError;
-    err.status = response.status;
-    err.stage = "groq_text";
-    throw err;
+  
+  let lastError: GatewayError | null = null;
+  for (const model of groqCandidateModels) {
+    const response = await fetch(groqUrl, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${groqApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => "");
+      const err = new Error(`Groq API error: ${response.status} ${response.statusText}${body ? ` - ${body.slice(0, 300)}` : ""}`) as GatewayError;
+      err.status = response.status;
+      err.stage = "groq_text";
+      lastError = err;
+
+      // If model not found (404), try next candidate model
+      if (response.status === 404 && body.includes("model_not_found")) {
+        console.warn(`[ai-gateway] Model ${model} not available on Groq, trying fallback...`);
+        continue;
+      }
+      throw err;
+    }
+
+    const data = await response.json();
+    return data.choices[0].message.content;
   }
-  const data = await response.json();
-  return data.choices[0].message.content;
+
+  if (lastError) throw lastError;
+  throw new Error("Failed to process request with available Groq models.");
 }
 
 Deno.serve(async (req) => {
