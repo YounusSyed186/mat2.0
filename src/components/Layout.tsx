@@ -202,7 +202,7 @@ export function Layout({ children }: LayoutProps) {
   const desktopHeaderRef = useRef<HTMLElement | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const { toast } = useToast();
-  const { hasAccess: hasAiAccess } = useAiAccess();
+  const { hasAccess: hasAiAccess, planName } = useAiAccess();
   const aiAccessReady = hasAiAccess === true;
 
   const handleSignOut = useCallback(async () => {
@@ -366,18 +366,44 @@ export function Layout({ children }: LayoutProps) {
               <div className="relative mb-4 overflow-hidden rounded-lg border border-white/10 bg-white/[0.06] p-4">
                 <div className="absolute -right-6 -top-8 h-28 w-28 rounded-full bg-gradient-to-br from-amber-400/30 to-primary/30 blur-2xl" />
                 <div className="relative z-10">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Crown className="h-5 w-5 text-amber-500" />
-                    <p className="text-sm font-bold">Go Premium</p>
-                  </div>
-                  <p className="mb-3 text-xs text-muted-foreground">
-                    Unlock AI matching & profile optimization
-                  </p>
-                  <Button asChild size="sm" className="premium-cta pressable h-9 w-full rounded-full text-xs font-bold shadow-none">
-                    <Link to="/subscriptions">
-                      Upgrade Now
-                    </Link>
-                  </Button>
+                  {aiAccessReady || planName ? (
+                    <>
+                      <div className="mb-2 flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Crown className="h-4.5 w-4.5 shrink-0 text-amber-400" />
+                          <p className="truncate text-sm font-bold text-white">
+                            {planName ? `${planName} Plan` : "Premium Active"}
+                          </p>
+                        </div>
+                        <Badge className="shrink-0 border-emerald-500/40 bg-emerald-500/20 px-2 py-0 text-[10px] font-bold text-emerald-300 shadow-none">
+                          Active
+                        </Badge>
+                      </div>
+                      <p className="mb-3 text-xs text-sidebar-foreground/70">
+                        AI matching & premium features active
+                      </p>
+                      <Button asChild size="sm" variant="outline" className="h-8 w-full rounded-full border-white/20 bg-white/10 text-xs font-semibold text-white hover:bg-white/20 shadow-none">
+                        <Link to="/subscriptions">
+                          Manage Subscription
+                        </Link>
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div className="mb-2 flex items-center gap-2">
+                        <Crown className="h-5 w-5 text-amber-500" />
+                        <p className="text-sm font-bold">Go Premium</p>
+                      </div>
+                      <p className="mb-3 text-xs text-muted-foreground">
+                        Unlock AI matching & profile optimization
+                      </p>
+                      <Button asChild size="sm" className="premium-cta pressable h-9 w-full rounded-full text-xs font-bold shadow-none">
+                        <Link to="/subscriptions">
+                          Upgrade Now
+                        </Link>
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
             )}
