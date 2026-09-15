@@ -411,7 +411,7 @@ export default function Interests() {
 
   return (
     <Layout>
-      <div className="max-w-2xl mx-auto px-4 py-8">
+      <div className="w-full max-w-5xl mx-auto px-4 py-8">
         {/* Header with back button */}
         <div className="flex items-center gap-3 mb-6">
           <Button

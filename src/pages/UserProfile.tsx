@@ -9,6 +9,7 @@ import type { Interest, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { UserAvatar } from "@/components/UserAvatar";
 import { ReportDialog } from "@/components/ReportDialog";
+import { PartnerPreferencesMatch } from "@/components/PartnerPreferencesMatch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -549,6 +550,8 @@ export default function UserProfile() {
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
             <main className="space-y-4">
+              <PartnerPreferencesMatch profile={profile} myProfile={myProfile} />
+
               <SectionCard title="Lifestyle & Personality" icon={Smile} empty={!hasLifestyle}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <DetailTile

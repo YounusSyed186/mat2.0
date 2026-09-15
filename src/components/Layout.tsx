@@ -198,7 +198,8 @@ export function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const pathname = location.pathname;
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const mobileHeaderRef = useRef<HTMLDivElement | null>(null);
+  const desktopHeaderRef = useRef<HTMLElement | null>(null);
   const mainRef = useRef<HTMLElement | null>(null);
   const { toast } = useToast();
   const { hasAccess: hasAiAccess } = useAiAccess();
@@ -251,46 +252,64 @@ export function Layout({ children }: LayoutProps) {
     ["/browse", "/interests", "/chat", "/ai-match"].includes(href)
   );
 
-  // Handle scroll events for header styling. Mobile uses document scrolling;
-  // desktop keeps the app-style internal scroll container.
+  // Handle scroll events for header styling efficiently without triggering React re-renders on every tick
   useEffect(() => {
     const mainContent = mainRef.current;
     if (!mainContent) return;
 
-    let frame = 0;
-    const handleScroll = () => {
-      if (frame) return;
+    let isCurrentlyScrolled = false;
+    let ticking = false;
 
-      frame = window.requestAnimationFrame(() => {
-        const nextScrolled = mainContent.scrollTop > 10 || window.scrollY > 10;
-        setIsScrolled((current) => current === nextScrolled ? current : nextScrolled);
-        frame = 0;
-      });
+    const checkScroll = () => {
+      const scrolled = mainContent.scrollTop > 10 || window.scrollY > 10;
+      if (scrolled !== isCurrentlyScrolled) {
+        isCurrentlyScrolled = scrolled;
+        if (mobileHeaderRef.current) {
+          mobileHeaderRef.current.classList.toggle("shadow-[0_16px_36px_rgba(15,23,42,0.10)]", scrolled);
+          mobileHeaderRef.current.classList.toggle("dark:shadow-[0_16px_36px_rgba(0,0,0,0.28)]", scrolled);
+        }
+        if (desktopHeaderRef.current) {
+          desktopHeaderRef.current.classList.toggle("border-b", scrolled);
+          desktopHeaderRef.current.classList.toggle("border-white/60", scrolled);
+          desktopHeaderRef.current.classList.toggle("bg-white/60", scrolled);
+          desktopHeaderRef.current.classList.toggle("backdrop-blur-xl", scrolled);
+          desktopHeaderRef.current.classList.toggle("dark:border-white/10", scrolled);
+          desktopHeaderRef.current.classList.toggle("dark:bg-slate-950/40", scrolled);
+        }
+      }
+      ticking = false;
     };
 
-    handleScroll();
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(checkScroll);
+        ticking = true;
+      }
+    };
+
+    checkScroll();
     mainContent.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('scroll', handleScroll, { passive: true });
+
     return () => {
-      if (frame) window.cancelAnimationFrame(frame);
       mainContent.removeEventListener('scroll', handleScroll);
       window.removeEventListener('scroll', handleScroll);
     };
   }, []);
 
   return (
-    <div className="mobile-app-shell premium-shell-bg relative min-h-[100svh] overflow-x-hidden p-0 text-foreground md:h-[100dvh] md:overflow-hidden md:px-3 md:py-3">
+    <div className="mobile-app-shell premium-shell-bg relative min-h-[100svh] overflow-x-hidden p-0 text-foreground md:h-[100dvh] md:overflow-hidden md:p-2 lg:p-2.5">
       <div className="pointer-events-none fixed inset-0 hidden opacity-80 md:block">
         <div className="absolute inset-x-0 top-0 h-56 bg-[linear-gradient(180deg,rgba(255,255,255,0.68),transparent)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.05),transparent)]" />
         <div className="absolute -left-24 top-20 h-64 w-64 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -right-28 bottom-24 h-72 w-72 rounded-full bg-teal-500/10 blur-3xl" />
       </div>
 
-      <div className="relative mx-auto flex min-h-[100svh] w-full max-w-[1660px] rounded-none bg-white/86 shadow-none ring-1 ring-white/70 dark:bg-slate-950/78 dark:ring-white/10 md:h-full md:min-h-0 md:overflow-hidden md:rounded-xl md:shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
+      <div className="relative flex min-h-[100svh] w-full max-w-none rounded-none bg-white/86 shadow-none ring-1 ring-white/70 dark:bg-slate-950/78 dark:ring-white/10 md:h-full md:min-h-0 md:overflow-hidden md:rounded-xl md:shadow-[0_28px_90px_rgba(15,23,42,0.18)]">
         {/* Desktop Sidebar */}
         <aside
           className={cn(
-            "group/sidebar m-3 mr-0 hidden w-[276px] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(180deg,hsl(var(--sidebar)),hsl(226_34%_11%))] text-sidebar-foreground shadow-[0_24px_70px_rgba(15,23,42,0.34)] md:flex"
+            "group/sidebar m-2.5 mr-0 hidden w-[270px] shrink-0 flex-col overflow-hidden rounded-xl border border-white/10 bg-[linear-gradient(180deg,hsl(var(--sidebar)),hsl(226_34%_11%))] text-sidebar-foreground shadow-[0_24px_70px_rgba(15,23,42,0.34)] md:flex"
           )}
         >
           <Link
@@ -391,10 +410,8 @@ export function Layout({ children }: LayoutProps) {
         <section className="relative m-0 flex min-h-[100svh] min-w-0 flex-1 flex-col rounded-none bg-transparent md:m-3 md:ml-2 md:min-h-0 md:overflow-hidden md:rounded-xl md:bg-white/64 md:ring-1 md:ring-white/70 md:dark:bg-white/[0.045] md:dark:ring-white/10">
           {/* Mobile Header */}
           <div
-            className={cn(
-              "sticky top-0 z-40 bg-white/78 px-4 pb-3 pt-4 backdrop-blur-xl dark:bg-slate-950/72 md:hidden",
-              isScrolled && "shadow-[0_16px_36px_rgba(15,23,42,0.10)] dark:shadow-[0_16px_36px_rgba(0,0,0,0.28)]"
-            )}
+            ref={mobileHeaderRef}
+            className="sticky top-0 z-40 bg-white/78 px-4 pb-3 pt-4 backdrop-blur-xl transition-shadow duration-150 dark:bg-slate-950/72 md:hidden"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
@@ -440,10 +457,8 @@ export function Layout({ children }: LayoutProps) {
 
           {/* Desktop Header */}
           <header
-            className={cn(
-              "hidden shrink-0 items-center justify-between px-7 py-5 transition-[background-color,border-color] duration-150 md:flex",
-              isScrolled && "border-b border-white/60 bg-white/60 backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/40"
-            )}
+            ref={desktopHeaderRef}
+            className="hidden shrink-0 items-center justify-between px-7 py-5 transition-[background-color,border-color] duration-150 md:flex"
           >
             <div>
               <h1 className="font-serif text-2xl font-bold text-foreground">{pageTitle}</h1>
@@ -458,11 +473,11 @@ export function Layout({ children }: LayoutProps) {
           <main
             ref={mainRef}
             className={cn(
-              "min-w-0 flex-1 overflow-x-hidden md:scrollbar-none md:min-h-0 md:overflow-y-auto md:overscroll-contain",
+              "custom-scrollbar flex min-w-0 flex-1 flex-col overflow-x-hidden md:min-h-0 md:overflow-y-auto md:overscroll-contain",
               showMobileBottomNav && "pb-[88px] md:pb-0"
             )}
           >
-            <div className="min-h-full w-full p-0 md:p-6">
+            <div className="flex min-h-full w-full flex-1 flex-col p-0">
               {children}
             </div>
           </main>

@@ -7,8 +7,8 @@ import { useNotificationStore } from "@/stores/useNotificationStore";
 import type { Interest, Profile } from "@/types";
 import { Layout } from "@/components/Layout";
 import { ProfileCard } from "@/components/ProfileCard";
+import { CustomSidebar } from "@/components/CustomSidebar";
 import { PaginationControls } from "@/components/PaginationControls";
-import { UserAvatar } from "@/components/UserAvatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -27,7 +27,6 @@ import {
   AlertCircle,
   ArrowRight,
   Filter,
-  MessageCircle,
   RefreshCw,
   Search,
   SlidersHorizontal,
@@ -36,8 +35,6 @@ import {
   X,
   ChevronDown,
   ChevronUp,
-  Zap,
-  User,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -247,8 +244,9 @@ const FilterSection: React.FC<FilterSectionProps> = ({
 // Main component
 export default function Browse() {
   const { currentUser, profile: myProfile } = useAuth();
-  const { blocks, fetchBlocks } = useBlockStore();
-  const { createNotification } = useNotificationStore();
+  const blocks = useBlockStore((state) => state.blocks);
+  const fetchBlocks = useBlockStore((state) => state.fetchBlocks);
+  const createNotification = useNotificationStore((state) => state.createNotification);
 
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profileRelations, setProfileRelations] = useState<Record<string, ProfileRelationStatus>>({});
@@ -284,8 +282,8 @@ export default function Browse() {
   const preferredAge = myProfile?.age || 30;
 
   useEffect(() => {
-    if (currentUser) fetchBlocks(currentUser.id);
-  }, [currentUser, fetchBlocks]);
+    if (currentUser?.id) fetchBlocks(currentUser.id);
+  }, [currentUser?.id, fetchBlocks]);
 
   // Load saved profiles from localStorage
   useEffect(() => {
@@ -489,8 +487,8 @@ export default function Browse() {
 
   return (
     <Layout>
-      <div className="min-h-screen px-4 pb-8 pt-2 md:px-7 md:pb-9">
-        <div className="mx-auto max-w-7xl">
+      <div className="w-full px-4 pb-8 pt-2 md:px-6 md:pb-9 lg:px-8">
+        <div className="w-full">
           {/* Header Section */}
           <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div>
@@ -501,11 +499,11 @@ export default function Browse() {
             </div>
           </div>
 
-          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_340px]">
             {/* Main Content */}
             <div className="min-w-0 space-y-6">
               {/* Hero Card */}
-              <Card className="mobile-card-custom animate-soft-enter relative isolate overflow-hidden rounded-lg border-0 bg-[linear-gradient(135deg,#111827,#be123c_55%,#0f766e)] text-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
+              <Card className="mobile-card-custom relative isolate overflow-hidden rounded-lg border-0 bg-[linear-gradient(135deg,#111827,#be123c_55%,#0f766e)] text-white shadow-[0_24px_70px_rgba(15,23,42,0.18)]">
                 <CardContent className="relative p-4 sm:p-6 md:p-8">
                   <div className="relative z-10">
                     <Badge variant="secondary" className="mb-3 bg-white/20 text-white">
@@ -563,7 +561,7 @@ export default function Browse() {
 
               {/* Filter Section */}
               {showFilters && (
-                <div className="animate-soft-enter">
+                <div>
                   <FilterSection
                     filters={filters}
                     onFilterChange={handleFilterChange}
@@ -634,7 +632,7 @@ export default function Browse() {
                 {/* Loading State */}
                 {loading && !error && (
                   <div className={selectedView === "grid"
-                    ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                    ? "grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3"
                     : "space-y-3"
                   }>
                     {Array.from({ length: 6 }).map((_, i) => (
@@ -676,7 +674,7 @@ export default function Browse() {
                 {!loading && !error && profiles.length > 0 && (
                   <>
                     <div className={selectedView === "grid"
-                      ? "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                      ? "grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3"
                       : "space-y-3"
                     }>
                       {profiles.map((profile) => (
@@ -703,96 +701,12 @@ export default function Browse() {
               </div>
             </div>
 
-            {/* Sidebar */}
-            <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
-              {/* Profile Summary */}
-              <Card className="premium-card rounded-xl shadow-none">
-                <CardContent className="p-5">
-                  {myProfile ? (
-                    <>
-                      <div className="flex flex-col items-center text-center">
-                        <UserAvatar
-                          name={myProfile.name}
-                          avatarUrl={myProfile.avatar_url}
-                          className="h-20 w-20"
-                        />
-                        <h3 className="mt-3 font-bold">{myProfile.name}</h3>
-                        <p className="text-xs text-muted-foreground">{myProfile.profession || "Member since 2024"}</p>
-                        <div className="mt-2 flex gap-1">
-                          <Badge variant="secondary" className="text-xs">
-                            {profileCompletion}% Complete
-                          </Badge>
-                        </div>
-                      </div>
-
-                      <div className="mt-4 grid grid-cols-3 gap-2">
-                        <Button asChild variant="outline" size="sm" className="gap-1">
-                          <Link to="/profile/edit">
-                            <User className="h-3 w-3" />
-                            Edit
-                          </Link>
-                        </Button>
-                        <Button asChild variant="outline" size="sm" className="gap-1">
-                          <Link to="/chat">
-                            <MessageCircle className="h-3 w-3" />
-                            Chat
-                          </Link>
-                        </Button>
-                        <Button asChild variant="outline" size="sm" className="gap-1">
-                          <Link to="/ai-match">
-                            <Sparkles className="h-3 w-3" />
-                            AI
-                          </Link>
-                        </Button>
-                      </div>
-
-                      <div className="mt-4 space-y-2 border-t border-border pt-4">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Location</span>
-                          <span className="font-medium">{myProfile.city || "Not set"}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Religion</span>
-                          <span className="font-medium">{myProfile.religion || "Not set"}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Age</span>
-                          <span className="font-medium">{myProfile.age || "-"}</span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="space-y-3">
-                      <Skeleton className="mx-auto h-20 w-20 rounded-full" />
-                      <Skeleton className="mx-auto h-4 w-3/4" />
-                      <Skeleton className="mx-auto h-4 w-1/2" />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Tips Card */}
-              <Card className="overflow-hidden rounded-xl border-0 bg-[linear-gradient(135deg,rgba(245,158,11,0.16),rgba(20,184,166,0.12))] shadow-none">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <Zap className="mt-0.5 h-5 w-5 text-amber-600" />
-                    <div>
-                      <h4 className="font-semibold text-sm">Pro Tip</h4>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {profileCompletion < 80
-                          ? "Complete your profile before sending more interests. Better details make replies easier."
-                          : "Your profile has enough detail for better match suggestions."}
-                      </p>
-                      {profileCompletion < 80 && (
-                        <Button size="sm" variant="link" className="mt-2 h-auto p-0 text-xs" asChild>
-                          <Link to="/profile/edit">Complete Profile</Link>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </aside>
+            {/* Custom Sidebar */}
+            <CustomSidebar
+              myProfile={myProfile}
+              profileCompletion={profileCompletion}
+              highCompatibilityCount={highCompatibilityCount}
+            />
           </div>
         </div>
       </div>

@@ -20,8 +20,16 @@ export function UserAvatar({ name, avatarUrl, size = "md", className = "" }: Use
   const { wrapper, text } = sizeMap[size];
   const initial = name ? name.charAt(0).toUpperCase() : "?";
 
-  // Strip cache-buster query params from storage URLs so Supabase serves them correctly
-  const cleanUrl = avatarUrl ? avatarUrl.split("?")[0] : null;
+  // Optimize image URLs: for Unsplash, request a small 160px thumbnail instead of multi-megabyte 24MP raw image
+  let cleanUrl = avatarUrl;
+  if (cleanUrl) {
+    if (cleanUrl.includes("images.unsplash.com")) {
+      const base = cleanUrl.split("?")[0];
+      cleanUrl = `${base}?w=160&h=160&fit=crop&auto=format&q=80`;
+    } else if (cleanUrl.includes("supabase.co/storage")) {
+      cleanUrl = cleanUrl.split("?")[0];
+    }
+  }
 
   if (cleanUrl && !imgError) {
     return (
@@ -31,6 +39,8 @@ export function UserAvatar({ name, avatarUrl, size = "md", className = "" }: Use
         <img
           src={cleanUrl}
           alt={name}
+          loading="lazy"
+          decoding="async"
           className="w-full h-full object-cover"
           onError={() => setImgError(true)}
         />

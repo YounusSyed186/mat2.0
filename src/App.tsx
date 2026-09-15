@@ -171,9 +171,10 @@ function HomeRedirect() {
 }
 
 function ProfileCreateRoute() {
-  const { session, loading } = useAuth();
+  const { session, profile, loading } = useAuth();
   if (loading) return <AppLoadingScreen label="Checking session" />;
   if (!session) return <Navigate to="/login" replace />;
+  if (profile) return <Navigate to="/browse" replace />;
   return <ProfilePage mode="create" />;
 }
 
