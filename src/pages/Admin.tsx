@@ -57,21 +57,6 @@ export default function Admin() {
     );
   }
 
-  const handleToggleAdmin = async (userId: string, currentRole: string) => {
-    if (profile?.role !== "primary_admin") {
-      toast({ title: "Error", description: "Only the primary admin can change roles.", variant: "destructive" });
-      return;
-    }
-    const newRole = currentRole === "admin" ? "user" : "admin";
-    const { error } = await supabase.from("profiles").update({ role: newRole }).eq("id", userId);
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: newRole === "admin" ? "User promoted to admin" : "Admin demoted to regular user" });
-      fetchAll();
-    }
-  };
-
   const handleBlockUser = async (userId: string, blocked: boolean) => {
     const { error } = await supabase.from("profiles").update({ is_blocked: !blocked }).eq("id", userId);
     if (error) {
@@ -255,17 +240,6 @@ export default function Admin() {
                                   <Trash2 className="h-3 w-3 mr-1" />
                                   Delete
                                 </Button>
-                                {profile?.role === "primary_admin" && u.role !== "primary_admin" && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-7 text-xs border-primary text-primary hover:bg-primary/10"
-                                    onClick={() => handleToggleAdmin(u.id, u.role)}
-                                  >
-                                    <Shield className="h-3 w-3 mr-1" />
-                                    {u.role === "admin" ? "Remove Admin" : "Make Admin"}
-                                  </Button>
-                                )}
                               </div>
                             </td>
                           </tr>

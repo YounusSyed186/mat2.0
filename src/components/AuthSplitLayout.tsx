@@ -58,7 +58,7 @@ export function AuthSplitLayout({
   children,
   title,
   subtitle,
-  eyebrow = "Welcome to Vivah",
+  eyebrow = "Welcome to Vivaah Vedika",
   actionLabel,
   actionHref,
   actionButtonLabel,
@@ -237,12 +237,12 @@ export function AuthSplitLayout({
               <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-sm ring-1 ring-black/5">
                 <img
                   src={logoSrc}
-                  alt="Vivah"
+                  alt="Vivaah Vedika"
                   className="h-full w-full rounded-lg object-cover"
                   style={{ objectPosition: "50% 40%" }}
                 />
               </span>
-              <span className="truncate font-serif text-2xl font-bold text-foreground">Vivah</span>
+              <span className="truncate font-serif text-2xl font-bold text-foreground">Vivaah Vedika</span>
             </Link>
 
             {actionHref && actionLabel && (

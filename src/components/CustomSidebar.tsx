@@ -52,7 +52,7 @@ export const CustomSidebar = memo(function CustomSidebar({
                   </h3>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  {myProfile.profession || "Vivah Member"}
+                  {myProfile.profession || "Vivaah Vedika Member"}
                 </p>
 
                 {/* Profile Completion Bar */}

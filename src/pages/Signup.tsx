@@ -83,7 +83,7 @@ export default function Signup() {
   return (
     <AuthSplitLayout
       title="Create account"
-      subtitle="Join Vivah and start building a profile made for the right match."
+      subtitle="Join Vivaah Vedika and start building a profile made for the right match."
       actionLabel="Sign in"
       actionHref="/login"
       actionButtonLabel="Login"

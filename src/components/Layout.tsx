@@ -240,11 +240,11 @@ export function Layout({ children }: LayoutProps) {
   }, [profile?.role]);
 
   const activeItem = navItems.find(({ href }) => pathname === href || pathname.startsWith(href + "/"));
-  const pageTitle = activeItem?.label ?? "Vivah";
+  const pageTitle = activeItem?.label ?? "Vivaah Vedika";
   const sidebarCompact = false;
   const firstName = profile?.name?.trim().split(/\s+/)[0] || "there";
-  const mobileTitle = pathname === "/browse" ? profile?.name || "Vivah" : pageTitle;
-  const mobileEyebrow = pathname === "/browse" ? "Hello" : "Vivah";
+  const mobileTitle = pathname === "/browse" ? profile?.name || "Vivaah Vedika" : pageTitle;
+  const mobileEyebrow = pathname === "/browse" ? "Hello" : "Vivaah Vedika";
   const mobileRootPaths = new Set(["/browse", "/interests", "/chat", "/ai-match", "/profile/edit"]);
   const showMobileBack = !mobileRootPaths.has(pathname) && !pathname.startsWith("/chat/");
   const showMobileBottomNav = !pathname.startsWith("/chat/");
@@ -315,27 +315,27 @@ export function Layout({ children }: LayoutProps) {
           <Link
             to="/browse"
             className={cn(
-              "flex w-full items-center py-7 transition-opacity duration-150 hover:opacity-85",
+              "flex w-full items-center py-6 transition-opacity duration-150 hover:opacity-85",
               sidebarCompact
                 ? "justify-center gap-0 px-0"
-                : "gap-3 px-7"
+                : "gap-2.5 px-4 sm:px-5"
             )}
           >
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-[0_12px_30px_rgba(0,0,0,0.24)] ring-1 ring-white/50">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-[0_12px_30px_rgba(0,0,0,0.24)] ring-1 ring-white/50">
               <img
                 src={logoSrc}
-                alt="Vivah"
+                alt="Vivaah Vedika"
                 className="h-full w-full rounded-lg object-cover transition-transform duration-150 ease-out group-hover/sidebar:scale-105"
                 style={{ objectPosition: "50% 40%" }}
               />
             </div>
             <span
               className={cn(
-                "whitespace-nowrap bg-gradient-to-r from-white to-amber-100 bg-clip-text font-serif text-2xl font-bold text-transparent transition-[max-width,opacity] duration-150 ease-out",
+                "min-w-0 truncate whitespace-nowrap bg-gradient-to-r from-white to-amber-100 bg-clip-text font-serif text-[1.22rem] font-bold tracking-tight text-transparent transition-[max-width,opacity] duration-150 ease-out",
                 sidebarCompact && "max-w-0 overflow-hidden opacity-0"
               )}
             >
-              Vivah
+              Vivaah Vedika
             </span>
           </Link>
 
@@ -428,11 +428,11 @@ export function Layout({ children }: LayoutProps) {
                   <Link
                     to="/browse"
                     className="pressable flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.10)] ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10"
-                    aria-label="Vivah dashboard"
+                    aria-label="Vivaah Vedika dashboard"
                   >
                     <img
                       src={logoSrc}
-                      alt="Vivah"
+                      alt="Vivaah Vedika"
                       className="h-full w-full rounded-xl object-cover"
                     />
                   </Link>

@@ -23,6 +23,7 @@ import {
   getProfileCompletion,
   type ProfileRelationStatus,
 } from "@/lib/profileJourney";
+import { calculateBidirectionalCompatibility, checkDealBreakers } from "@/lib/matchmaking";
 import {
   AlertCircle,
   ArrowRight,
@@ -357,35 +358,31 @@ export default function Browse() {
         );
         result = result.filter((p) => !blockedIds.has(p.id));
 
-        // Smart sorting algorithm
+        // Smart sorting algorithm with Bidirectional & Partner Preferences
         if (smartSort && myProfile) {
           result.sort((a, b) => {
-            let scoreA = 0;
-            let scoreB = 0;
+            const dbA = checkDealBreakers(myProfile, a).passed && checkDealBreakers(a, myProfile).passed;
+            const dbB = checkDealBreakers(myProfile, b).passed && checkDealBreakers(b, myProfile).passed;
 
-            // Location match (highest weight)
+            const bidiA = calculateBidirectionalCompatibility(myProfile, a);
+            const bidiB = calculateBidirectionalCompatibility(myProfile, b);
+
+            let scoreA = bidiA.compositePreferenceScore * 50;
+            let scoreB = bidiB.compositePreferenceScore * 50;
+
+            if (!dbA) scoreA -= 100;
+            if (!dbB) scoreB -= 100;
+
+            // Basic attribute match boost
             if (sameValue(a.city, myProfile.city)) scoreA += 10;
             if (sameValue(b.city, myProfile.city)) scoreB += 10;
 
-            // Religion match
             if (a.religion === myProfile.religion) scoreA += 7;
             if (b.religion === myProfile.religion) scoreB += 7;
 
-            // Profession match
-            if (preferredProfession && a.profession === preferredProfession) scoreA += 5;
-            if (preferredProfession && b.profession === preferredProfession) scoreB += 5;
-
-            // Age compatibility
-            const ageDiffA = Math.abs((a.age || 0) - preferredAge);
-            const ageDiffB = Math.abs((b.age || 0) - preferredAge);
-            scoreA += Math.max(0, 5 - ageDiffA);
-            scoreB += Math.max(0, 5 - ageDiffB);
-
-            // Profile completeness
-            const completenessA = [a.bio, a.profession, a.education].filter(Boolean).length;
-            const completenessB = [b.bio, b.profession, b.education].filter(Boolean).length;
-            scoreA += completenessA;
-            scoreB += completenessB;
+            // Attach computed matched preferences for ProfileCard display
+            (a as any).matched_preferences = bidiA.matchedPreferences;
+            (b as any).matched_preferences = bidiB.matchedPreferences;
 
             return scoreB - scoreA;
           });

@@ -2,7 +2,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { UserAvatar } from "@/components/UserAvatar";
 import {
-  ArrowRight,
   Ban,
   Briefcase,
   CheckCircle2,
@@ -10,7 +9,6 @@ import {
   GraduationCap,
   Heart,
   Loader2,
-  MapPin,
   MessageCircle,
   Sparkles,
   XCircle,
@@ -96,25 +94,30 @@ export const ProfileCard = memo(function ProfileCard({
         </div>
 
         {/* Compatibility / Match Highlights (Compact) */}
-        {(hasSimilarity || matchReasons.length > 0 || profile.religion) && (
+        {((typeof (profile as any).final_match_score === "number") || hasSimilarity || matchReasons.length > 0 || profile.religion) && (
           <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-            {hasSimilarity && (
+            {typeof (profile as any).final_match_score === "number" ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                <Sparkles className="h-3 w-3" />
+                {Math.round((profile as any).final_match_score * 100)}% Match
+              </span>
+            ) : hasSimilarity ? (
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
                 <Sparkles className="h-3 w-3" />
                 {Math.round(similarity * 100)}% Match
               </span>
-            )}
+            ) : null}
             {profile.religion && (
               <span className="inline-flex items-center rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
                 {profile.religion}
               </span>
             )}
-            {matchReasons.slice(0, 2).map((reason) => (
+            {((profile as any).matched_preferences || matchReasons).slice(0, 2).map((reason: string) => (
               <span
                 key={reason}
                 className="inline-flex items-center rounded-full bg-primary/8 px-2 py-0.5 text-[11px] font-medium text-primary"
               >
-                {reason}
+                ✓ {reason}
               </span>
             ))}
           </div>

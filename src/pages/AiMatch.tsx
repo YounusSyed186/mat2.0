@@ -112,7 +112,10 @@ export default function AiMatch() {
         }
       }
 
-      const { data, error: searchError } = await supabase.rpc("match_profiles", {
+      let data: any = null;
+      let searchError: any = null;
+
+      const rpcV2Res = await supabase.rpc("match_profiles_v2", {
         query_embedding: `[${queryEmbedding.join(",")}]`,
         match_limit: MATCH_LIMIT,
         match_offset: offset,
@@ -120,8 +123,26 @@ export default function AiMatch() {
         filter_age_max: parsedFilters?.age_max || 100,
         filter_gender: targetGender,
         filter_religion: parsedFilters?.religion,
-        exclude_user_id: profile?.id,
+        current_user_id: profile?.id,
       });
+
+      if (rpcV2Res.error) {
+        // Fallback to legacy v1 RPC if v2 not yet deployed on database instance
+        const rpcV1Res = await supabase.rpc("match_profiles", {
+          query_embedding: `[${queryEmbedding.join(",")}]`,
+          match_limit: MATCH_LIMIT,
+          match_offset: offset,
+          filter_age_min: parsedFilters?.age_min || 18,
+          filter_age_max: parsedFilters?.age_max || 100,
+          filter_gender: targetGender,
+          filter_religion: parsedFilters?.religion,
+          exclude_user_id: profile?.id,
+        });
+        data = rpcV1Res.data;
+        searchError = rpcV1Res.error;
+      } else {
+        data = rpcV2Res.data;
+      }
 
       if (searchError) throw searchError;
 
@@ -216,14 +237,14 @@ export default function AiMatch() {
               <Sparkles className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <p className="text-sm font-bold">Vivah AI Match</p>
+              <p className="text-sm font-bold">Vivaah Vedika AI Match</p>
               <p className="text-xs text-muted-foreground">Compatibility search</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="hidden h-9 rounded-full bg-white/60 px-3 text-xs shadow-none dark:bg-white/5 sm:inline-flex">
               <Bot className="h-3.5 w-3.5" />
-              VivahAI 2.0
+              Vivaah AI 2.0
             </Button>
             <Button size="sm" className="premium-cta h-9 rounded-full px-3 text-xs font-bold shadow-none" onClick={startFresh}>
               <MessageSquarePlus className="h-3.5 w-3.5" />

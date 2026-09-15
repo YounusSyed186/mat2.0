@@ -65,7 +65,7 @@ export default function Login() {
   return (
     <AuthSplitLayout
       title="Hi, welcome back"
-      subtitle="Sign in to continue your Vivah journey."
+      subtitle="Sign in to continue your Vivaah Vedika journey."
       actionLabel="Sign up"
       actionHref="/signup"
       actionButtonLabel="Join Us"

@@ -47,35 +47,66 @@ function sleep(ms) {
 function buildProfileText(profile) {
   const promptsText = Array.isArray(profile.prompts) 
     ? profile.prompts.map(p => `${p.question}: ${p.answer}`).join(' ') 
+    : (typeof profile.prompts === 'object' && profile.prompts !== null)
+    ? Object.entries(profile.prompts).map(([k, v]) => `${k}: ${v}`).join(' ')
     : '';
 
+  const selfLines = [
+    profile.name ? `Name: ${profile.name}` : '',
+    profile.age ? `Age: ${profile.age}` : '',
+    profile.gender ? `Gender: ${profile.gender}` : '',
+    profile.religion ? `Religion: ${profile.religion}` : '',
+    profile.city ? `City: ${profile.city}` : '',
+    profile.profession ? `Profession: ${profile.profession}` : '',
+    profile.education ? `Education: ${profile.education}` : '',
+    profile.bio ? `Bio: ${profile.bio}` : '',
+    profile.languages?.length ? `Languages: ${profile.languages.join(', ')}` : '',
+    profile.ethnicity ? `Ethnicity: ${profile.ethnicity}` : '',
+    profile.willing_to_relocate !== undefined ? `Willing to relocate: ${profile.willing_to_relocate ? 'Yes' : 'No'}` : '',
+    profile.introvert_extrovert ? `Personality scale: ${profile.introvert_extrovert}/10` : '',
+    profile.hobbies?.length ? `Hobbies: ${profile.hobbies.join(', ')}` : '',
+    profile.habits ? `Habits: ${profile.habits}` : '',
+    profile.social_preferences ? `Social preferences: ${profile.social_preferences}` : '',
+    profile.career_ambition ? `Career ambition: ${profile.career_ambition}` : '',
+    profile.family_goals ? `Family goals: ${profile.family_goals}` : '',
+    profile.lifestyle_choices ? `Lifestyle: ${profile.lifestyle_choices}` : '',
+    profile.height ? `Height: ${profile.height} cm` : '',
+    profile.weight ? `Weight: ${profile.weight} kg` : '',
+    profile.fitness_level ? `Fitness: ${profile.fitness_level}` : '',
+    profile.style ? `Style: ${profile.style}` : '',
+    profile.skin_tone ? `Skin tone: ${profile.skin_tone}` : '',
+    profile.search_intent ? `Looking for: ${profile.search_intent}` : '',
+    promptsText ? `Prompts: ${promptsText}` : '',
+  ].filter(Boolean).join('\n');
+
+  const partnerLines = [
+    (profile.partner_age_min || profile.partner_age_max) ? `Preferred age: ${profile.partner_age_min || 18} - ${profile.partner_age_max || 100}` : '',
+    profile.partner_religion ? `Preferred religion: ${profile.partner_religion}${profile.partner_religion_strict ? ' (Strict)' : ''}` : '',
+    profile.partner_city ? `Preferred city: ${profile.partner_city}` : '',
+    profile.partner_willing_to_relocate !== undefined ? `Partner willing to relocate: ${profile.partner_willing_to_relocate ? 'Yes' : 'No'}` : '',
+    profile.partner_education ? `Preferred education: ${profile.partner_education}` : '',
+    profile.partner_profession ? `Preferred profession: ${profile.partner_profession}` : '',
+    profile.partner_career_ambition ? `Preferred career ambition: ${profile.partner_career_ambition}` : '',
+    (profile.partner_height_min || profile.partner_height_max) ? `Preferred height: ${profile.partner_height_min || 'Any'} - ${profile.partner_height_max || 'Any'} cm` : '',
+    profile.partner_fitness_level ? `Preferred fitness: ${profile.partner_fitness_level}` : '',
+    profile.partner_languages?.length ? `Preferred languages: ${profile.partner_languages.join(', ')}` : '',
+    profile.partner_lifestyle ? `Preferred lifestyle: ${profile.partner_lifestyle}` : '',
+    profile.partner_family_goals ? `Preferred family goals: ${profile.partner_family_goals}` : '',
+    profile.partner_smoking ? `Smoking: ${profile.partner_smoking}` : '',
+    profile.partner_drinking ? `Drinking: ${profile.partner_drinking}` : '',
+    profile.partner_children_preference ? `Children: ${profile.partner_children_preference}` : '',
+    profile.partner_marital_status ? `Marital status: ${profile.partner_marital_status}` : '',
+    profile.partner_hobbies?.length ? `Partner hobbies: ${profile.partner_hobbies.join(', ')}` : '',
+    profile.partner_must_have?.length ? `Must have: ${profile.partner_must_have.join(', ')}` : '',
+    profile.partner_deal_breakers?.length ? `Deal breakers: ${profile.partner_deal_breakers.join(', ')}` : '',
+  ].filter(Boolean).join('\n');
+
   return [
-    profile.name,
-    profile.age,
-    profile.gender,
-    profile.religion,
-    profile.city,
-    profile.profession,
-    profile.bio,
-    profile.languages?.join(', '),
-    profile.ethnicity,
-    profile.willing_to_relocate ? 'willing to relocate' : 'not willing to relocate',
-    profile.introvert_extrovert ? `introvert/extrovert level ${profile.introvert_extrovert}` : '',
-    profile.hobbies?.join(', '),
-    profile.habits,
-    profile.social_preferences,
-    profile.career_ambition,
-    profile.family_goals,
-    profile.lifestyle_choices,
-    profile.fitness_level,
-    profile.style,
-    profile.skin_tone,
-    profile.search_intent,
-    profile.intent_duration,
-    promptsText,
-  ]
-    .filter(Boolean)
-    .join(' ');
+    'VIVAH PROFILE',
+    selfLines,
+    partnerLines ? '\nIDEAL PARTNER PREFERENCES\n' + partnerLines : '',
+    '\nMATCHING CONTEXT\nThis profile represents both self attributes and partner preferences.'
+  ].filter(Boolean).join('\n\n');
 }
 
 async function generateEmbedding(text, attempt = 1) {
@@ -122,7 +153,7 @@ async function backfillEmbeddings() {
     // Fetch a batch of profiles that need embedding
     const { data: profiles, error: fetchErr } = await supabase
       .from('profiles')
-      .select('id, name, age, gender, religion, city, profession, bio, languages, ethnicity, willing_to_relocate, introvert_extrovert, hobbies, habits, social_preferences, career_ambition, family_goals, lifestyle_choices, height, fitness_level, style, skin_tone, search_intent, intent_duration, prompts')
+      .select('*')
       .or('needs_embedding.eq.true,embedding.is.null')
       .range(offset, offset + BATCH_SIZE - 1);
 

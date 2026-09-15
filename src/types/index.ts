@@ -44,8 +44,65 @@ export interface Profile {
   
   weight?: number;
 
+  // Social Presence (Public URLs)
+  instagram_url?: string | null;
+  facebook_url?: string | null;
+  linkedin_url?: string | null;
+  twitter_url?: string | null;
+  other_social_url?: string | null;
+
+  // Partner Preferences
+  partner_age_min?: number | null;
+  partner_age_max?: number | null;
+  partner_religion?: string | null;
+  partner_religion_strict?: boolean;
+  partner_city?: string | null;
+  partner_willing_to_relocate?: boolean | null;
+  partner_education?: string | null;
+  partner_profession?: string | null;
+  partner_height_min?: number | null;
+  partner_height_max?: number | null;
+  partner_fitness_level?: string | null;
+  partner_languages?: string[];
+  partner_lifestyle?: string | null;
+  partner_family_goals?: string | null;
+  partner_career_ambition?: string | null;
+  partner_hobbies?: string[];
+  partner_smoking?: string | null;
+  partner_drinking?: string | null;
+  partner_children_preference?: string | null;
+  partner_marital_status?: string | null;
+  partner_must_have?: string[];
+  partner_deal_breakers?: string[];
+
+  // Embedding metadata
+  needs_embedding?: boolean;
+  embedding?: string | number[] | null;
+
   created_at: string;
   updated_at?: string;
+}
+
+export interface MatchScoreBreakdown {
+  hardCompatibilityScore: number;
+  preferenceScore: number;
+  forwardPreferenceScore: number;
+  reversePreferenceScore: number;
+  lifestyleScore: number;
+  semanticSimilarity: number;
+  dealBreakerStatus: boolean;
+  finalMatchScore: number;
+  matchedPreferences: string[];
+}
+
+export interface MatchResultV2 extends Profile {
+  similarity: number;
+  preference_score?: number;
+  lifestyle_score?: number;
+  hard_compatibility_score?: number;
+  deal_breaker_status?: boolean;
+  final_match_score: number;
+  matched_preferences?: string[];
 }
 
 export interface Interest {
@@ -143,3 +200,26 @@ export interface UserSubscription {
   created_at: string;
   plan?: SubscriptionPlan;
 }
+
+export interface RazorpayPayment {
+  id: string;
+  user_id: string;
+  plan_id?: string | null;
+  subscription_id?: string | null;
+  razorpay_payment_id: string;
+  razorpay_order_id?: string | null;
+  razorpay_signature?: string | null;
+  amount: number;
+  currency: string;
+  status: string;
+  billing_cycle?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+}
+
+declare global {
+  interface Window {
+    Razorpay?: any;
+  }
+}
+

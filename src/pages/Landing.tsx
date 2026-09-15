@@ -60,7 +60,7 @@ const features = [
 const testimonials = [
   {
     quote:
-      "Vivah felt intentional from the first profile. We understood values and expectations before starting a conversation.",
+      "Vivaah Vedika felt intentional from the first profile. We understood values and expectations before starting a conversation.",
     name: "Aarav & Meera",
     detail: "Matched through shared city and values",
   },
@@ -99,11 +99,11 @@ function MotionBlock({
 
 function Logo() {
   return (
-    <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="Vivah home">
+    <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="Vivaah Vedika home">
       <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-sm ring-1 ring-black/5">
         <img src={logoSrc} alt="" className="h-full w-full rounded-xl object-cover" />
       </span>
-      <span className="truncate font-serif text-xl font-bold text-slate-950 dark:text-white">Vivah</span>
+      <span className="truncate font-serif text-xl font-bold text-slate-950 dark:text-white">Vivaah Vedika</span>
     </Link>
   );
 }
@@ -188,7 +188,7 @@ export default function Landing() {
                 Meet with clarity, not endless scrolling.
               </h1>
               <p className="mt-6 max-w-xl text-base leading-8 text-slate-600 dark:text-white/70 sm:text-lg">
-                Vivah blends thoughtful matrimonial profiles, safer mutual-interest messaging,
+                Vivaah Vedika blends thoughtful matrimonial profiles, safer mutual-interest messaging,
                 and AI-assisted discovery into one elegant path toward a meaningful match.
               </p>
               <div className="mt-8 flex flex-col gap-3 sm:flex-row">

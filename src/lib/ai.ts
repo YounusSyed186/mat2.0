@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabaseClient";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+export { buildProfileEmbeddingDocument, normalizeStringArray } from "./profileEmbedding";
 
 type AiAction =
   | "generateEmbedding"
@@ -131,12 +132,20 @@ Return ONLY valid JSON with keys: profile_score, strengths, weaknesses, missing_
       bio: p.bio,
       match_score: `${Math.round(((p.similarity as number) || 0) * 100)}%`,
     }));
-    const prompt = `A user is searching for matrimonial matches with this query: "${payload.query}"
+    const prompt = `You are a warm, intuitive, human matrimonial matchmaker speaking directly to a user searching for their life partner.
 
-Based on the vector search, here are the top matching profiles:
+The user asked for: "${payload.query}"
+
+Here are the candidate profiles found:
 ${JSON.stringify(simpleProfiles, null, 2)}
 
-Write a friendly, concise response explaining WHY these profiles match the user's request. Keep it under 4 short paragraphs.`;
+Write a warm, conversational, human response introducing these matches to the user.
+
+STRICT WRITING RULES:
+1. Speak naturally like a friendly, caring human matchmaker—warm, welcoming, and personal.
+2. NEVER mention technical terms or AI jargon (do NOT mention "vector search", "vector model", "algorithm", "keywords", "data points", "percentages formula", or "search signals").
+3. Highlight the people warmly: mention their names, their hobbies/passions (e.g. cooking, travel, values), and why you think they would be a wonderful fit.
+4. Keep it concise, engaging, and under 3 short paragraphs.`;
 
     const explanation = await directGroqCall(prompt, false);
     return { explanation } as T;

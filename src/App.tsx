@@ -39,7 +39,7 @@ const NotFound = lazyWithPreload(() => import("@/pages/not-found"));
 const publicRoutePreloads = [Login.preload, Signup.preload];
 const signedInRoutePreloads = [Browse.preload, ChatList.preload, Interests.preload];
 
-function AppLoadingScreen({ label = "Preparing Vivah" }: { label?: string }) {
+function AppLoadingScreen({ label = "Preparing Vivaah Vedika" }: { label?: string }) {
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-[hsl(var(--background))] text-foreground">
       <div className="flex flex-col items-center gap-5">
@@ -104,7 +104,7 @@ function RouteFallback() {
     );
   }
 
-  return <AppLoadingScreen label="Loading Vivah" />;
+  return <AppLoadingScreen label="Loading Vivaah Vedika" />;
 }
 
 function RoutePreloader() {
@@ -215,7 +215,7 @@ function RouteRenderGate({ children }: { children: ReactNode }) {
   return (
     <>
       {children}
-      {!ready && <AppLoadingScreen label="Rendering Vivah" />}
+      {!ready && <AppLoadingScreen label="Rendering Vivaah Vedika" />}
     </>
   );
 }

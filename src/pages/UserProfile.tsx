@@ -606,6 +606,71 @@ export default function UserProfile() {
                 </CardContent>
               </Card>
 
+              {(profile.instagram_url || profile.facebook_url || profile.linkedin_url || profile.twitter_url || profile.other_social_url) && (
+                <Card className="border-card-border bg-card/95 shadow-sm">
+                  <CardContent className="p-5">
+                    <h2 className="text-sm font-bold text-foreground mb-3">Social Presence</h2>
+                    <div className="flex flex-col gap-2">
+                      {profile.instagram_url && (
+                        <a
+                          href={profile.instagram_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        >
+                          <Globe className="h-4 w-4 text-pink-500" />
+                          <span className="truncate">Instagram</span>
+                        </a>
+                      )}
+                      {profile.facebook_url && (
+                        <a
+                          href={profile.facebook_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        >
+                          <Globe className="h-4 w-4 text-blue-600" />
+                          <span className="truncate">Facebook</span>
+                        </a>
+                      )}
+                      {profile.linkedin_url && (
+                        <a
+                          href={profile.linkedin_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        >
+                          <Globe className="h-4 w-4 text-blue-700" />
+                          <span className="truncate">LinkedIn</span>
+                        </a>
+                      )}
+                      {profile.twitter_url && (
+                        <a
+                          href={profile.twitter_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        >
+                          <Globe className="h-4 w-4 text-sky-500" />
+                          <span className="truncate">X / Twitter</span>
+                        </a>
+                      )}
+                      {profile.other_social_url && (
+                        <a
+                          href={profile.other_social_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                        >
+                          <Globe className="h-4 w-4 text-primary" />
+                          <span className="truncate">Website / Profile</span>
+                        </a>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {(physicalDetails.length > 0 || profile.voice_url || profile.video_url) && (
                 <Card className="border-card-border bg-card/95 shadow-sm">
                   <CardContent className="p-5">
