@@ -4,7 +4,7 @@ import App from "./App";
 import "./index.css";
 
 createRoot(document.getElementById("root")!).render(
-  <ThemeProvider defaultTheme="system" storageKey="vite-ui-theme" attribute="class">
+  <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme" attribute="class">
     <App />
   </ThemeProvider>
 );

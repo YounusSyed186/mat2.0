@@ -51,61 +51,68 @@ export const ProfileCard = memo(function ProfileCard({
   return (
     <Card
       className={cn(
-        "premium-card interactive-surface group h-full overflow-hidden rounded-xl shadow-none",
+        "premium-card interactive-surface group flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-border/60 bg-card p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30 dark:bg-card/90",
         className
       )}
       data-testid={`card-profile-${profile.id}`}
     >
-      <div className="flex h-full flex-col p-4">
+      <div className="space-y-3">
+        {/* Header: Avatar, Name, Location & Save Button */}
         <div className="flex items-start justify-between gap-3">
-          <Link to={profileHref} className="flex min-w-0 items-center gap-3">
-            <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} size="lg" />
-            <div className="min-w-0">
-              <h3 className="truncate text-base font-bold text-foreground transition-colors group-hover:text-primary">
+          <Link to={profileHref} className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="relative shrink-0">
+              <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} size="lg" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="truncate font-serif text-base font-bold text-foreground transition-colors group-hover:text-primary">
                 {profile.name}
               </h3>
-              <p className="mt-1 text-xs text-muted-foreground">{profile.age} yrs</p>
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground/80">{profile.age} yrs</span>
+                {profile.city && (
+                  <>
+                    <span>•</span>
+                    <span className="truncate">{profile.city}</span>
+                  </>
+                )}
+              </p>
             </div>
           </Link>
 
-          <div className="flex shrink-0 items-center gap-2">
-            {onSave && (
-              <button
-                type="button"
-                onClick={() => onSave(profile.id)}
-                aria-pressed={isSaved}
-                aria-label={isSaved ? "Remove saved profile" : "Save profile"}
-                className={cn(
-                  "pressable flex h-9 w-9 items-center justify-center rounded-full border border-transparent bg-white/70 text-muted-foreground shadow-sm dark:bg-white/10",
-                  isSaved && "bg-primary/10 text-primary"
-                )}
-              >
-                <Heart className={cn("h-4 w-4", isSaved && "fill-current")} />
-              </button>
-            )}
-            <Link
-              to={profileHref}
-              aria-label={`View ${profile.name}'s profile`}
-              className="pressable flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
+          {onSave && (
+            <button
+              type="button"
+              onClick={() => onSave(profile.id)}
+              aria-pressed={isSaved}
+              aria-label={isSaved ? "Remove saved profile" : "Save profile"}
+              className={cn(
+                "pressable flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border/40 bg-muted/30 text-muted-foreground transition-all hover:bg-primary/10 hover:text-primary hover:border-primary/20",
+                isSaved && "border-primary/20 bg-primary/10 text-primary"
+              )}
             >
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
+              <Heart className={cn("h-4 w-4 transition-transform active:scale-125", isSaved && "fill-current")} />
+            </button>
+          )}
         </div>
 
-        {hasSimilarity && (
-          <div className="mt-4 inline-flex w-fit items-center gap-1 rounded-full bg-teal-500/10 px-2.5 py-1 text-xs font-bold text-teal-700 dark:text-teal-200">
-            <Sparkles className="h-3.5 w-3.5" />
-            {Math.round(similarity * 100)}% Match
-          </div>
-        )}
-
-        {matchReasons.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {matchReasons.map((reason) => (
+        {/* Compatibility / Match Highlights (Compact) */}
+        {(hasSimilarity || matchReasons.length > 0 || profile.religion) && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+            {hasSimilarity && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                <Sparkles className="h-3 w-3" />
+                {Math.round(similarity * 100)}% Match
+              </span>
+            )}
+            {profile.religion && (
+              <span className="inline-flex items-center rounded-full bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                {profile.religion}
+              </span>
+            )}
+            {matchReasons.slice(0, 2).map((reason) => (
               <span
                 key={reason}
-                className="inline-flex items-center rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary"
+                className="inline-flex items-center rounded-full bg-primary/8 px-2 py-0.5 text-[11px] font-medium text-primary"
               >
                 {reason}
               </span>
@@ -113,94 +120,85 @@ export const ProfileCard = memo(function ProfileCard({
           </div>
         )}
 
-        <Link to={profileHref} className="mt-4 block">
-          <p className="line-clamp-3 min-h-[3.75rem] text-sm leading-relaxed text-muted-foreground">
-            {profile.bio || "Looking for a meaningful connection. Open to thoughtful conversations and shared family values."}
+        {/* Bio preview */}
+        <Link to={profileHref} className="block">
+          <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
+            {profile.bio || profile.search_intent || "Looking for a meaningful connection with shared values."}
           </p>
         </Link>
 
-        <Link to={profileHref} className="mt-4 grid gap-2 text-sm">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <MapPin className="h-4 w-4 text-teal-600" />
-            <span className="truncate">{profile.city || "Location not listed"}</span>
-          </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Briefcase className="h-4 w-4 text-rose-600" />
-            <span className="truncate">{profile.profession || "Profession not listed"}</span>
-          </div>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <GraduationCap className="h-4 w-4 text-violet-600" />
-            <span className="truncate">{profile.education || "Education not listed"}</span>
-          </div>
-        </Link>
+        {/* Key professional & education details */}
+        {(profile.profession || profile.education) && (
+          <Link to={profileHref} className="space-y-1.5 rounded-xl bg-muted/30 p-2.5 text-xs">
+            {profile.profession && (
+              <div className="flex items-center gap-2 text-foreground/85">
+                <Briefcase className="h-3.5 w-3.5 shrink-0 text-primary/70" />
+                <span className="truncate font-medium">{profile.profession}</span>
+              </div>
+            )}
+            {profile.education && (
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <GraduationCap className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                <span className="truncate">{profile.education}</span>
+              </div>
+            )}
+          </Link>
+        )}
+      </div>
 
-        <div className="mt-auto flex flex-wrap gap-2 pt-5">
-          {profile.religion && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-slate-950/5 px-2.5 py-1 text-xs font-bold text-muted-foreground dark:bg-white/10">
-              <Heart className="h-3.5 w-3.5 text-rose-500" />
-              {profile.religion}
-            </span>
-          )}
-          {profile.search_intent && (
-            <span className="inline-flex rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
-              {profile.search_intent}
-            </span>
-          )}
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          {relationStatus === "accepted" ? (
-            <Button asChild size="sm" className="premium-cta pressable gap-2 rounded-full shadow-none">
-              <Link to={`/chat/${profile.id}`}>
-                <MessageCircle className="h-3.5 w-3.5" />
-                Chat
-              </Link>
-            </Button>
-          ) : relationStatus === "received_pending" ? (
-            <Button asChild size="sm" className="premium-cta pressable gap-2 rounded-full shadow-none">
-              <Link to="/interests">
-                <Heart className="h-3.5 w-3.5" />
-                Review
-              </Link>
-            </Button>
-          ) : relationStatus === "sent_pending" ? (
-            <Button size="sm" variant="outline" disabled className="gap-2">
-              <Clock className="h-3.5 w-3.5" />
-              Sent
-            </Button>
-          ) : relationStatus === "rejected" ? (
-            <Button size="sm" variant="outline" disabled className="gap-2">
-              <XCircle className="h-3.5 w-3.5" />
-              Closed
-            </Button>
-          ) : relationStatus === "blocked" ? (
-            <Button size="sm" variant="outline" disabled className="gap-2">
-              <Ban className="h-3.5 w-3.5" />
-              Unavailable
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              onClick={() => onSendInterest?.(profile.id)}
-              disabled={!canSendInterest || actionLoading}
-              className="premium-cta pressable gap-2 rounded-full shadow-none"
-            >
-              {actionLoading ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Heart className="h-3.5 w-3.5" />
-              )}
-              Interest
-            </Button>
-          )}
-
-          <Button asChild size="sm" variant="outline" className="pressable gap-2 rounded-full bg-white/60 shadow-none dark:bg-white/5">
-            <Link to={profileHref}>
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              View Profile
+      {/* Action Buttons Footer */}
+      <div className="mt-4 grid grid-cols-2 gap-2 pt-2 border-t border-border/40">
+        {relationStatus === "accepted" ? (
+          <Button asChild size="sm" className="premium-cta pressable h-9 gap-1.5 rounded-xl text-xs shadow-none">
+            <Link to={`/chat/${profile.id}`}>
+              <MessageCircle className="h-3.5 w-3.5" />
+              Chat
             </Link>
           </Button>
-        </div>
+        ) : relationStatus === "received_pending" ? (
+          <Button asChild size="sm" className="premium-cta pressable h-9 gap-1.5 rounded-xl text-xs shadow-none">
+            <Link to="/interests">
+              <Heart className="h-3.5 w-3.5" />
+              Review
+            </Link>
+          </Button>
+        ) : relationStatus === "sent_pending" ? (
+          <Button size="sm" variant="outline" disabled className="h-9 gap-1.5 rounded-xl text-xs">
+            <Clock className="h-3.5 w-3.5" />
+            Sent
+          </Button>
+        ) : relationStatus === "rejected" ? (
+          <Button size="sm" variant="outline" disabled className="h-9 gap-1.5 rounded-xl text-xs">
+            <XCircle className="h-3.5 w-3.5" />
+            Closed
+          </Button>
+        ) : relationStatus === "blocked" ? (
+          <Button size="sm" variant="outline" disabled className="h-9 gap-1.5 rounded-xl text-xs">
+            <Ban className="h-3.5 w-3.5" />
+            Unavailable
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            onClick={() => onSendInterest?.(profile.id)}
+            disabled={!canSendInterest || actionLoading}
+            className="premium-cta pressable h-9 gap-1.5 rounded-xl text-xs font-semibold shadow-none"
+          >
+            {actionLoading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Heart className="h-3.5 w-3.5" />
+            )}
+            Interest
+          </Button>
+        )}
+
+        <Button asChild size="sm" variant="outline" className="pressable h-9 gap-1.5 rounded-xl border-border/60 bg-background text-xs font-medium text-foreground hover:bg-muted/50 shadow-none">
+          <Link to={profileHref}>
+            <CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />
+            View Profile
+          </Link>
+        </Button>
       </div>
     </Card>
   );
