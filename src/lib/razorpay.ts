@@ -60,7 +60,7 @@ export async function openRazorpayCheckout(options: RazorpayCheckoutOptions): Pr
       currency: options.currency || "INR",
       name: options.name || "Vivaah Vedika Matrimony",
       description: options.description || `${options.planName} Plan Upgrade`,
-      image: "https://images.unsplash.com/photo-1583939003579-730e3918a45a?w=150&auto=format&fit=crop&q=80",
+      image: typeof window !== "undefined" ? `${window.location.origin}/vivah-logo.png` : "/vivah-logo.png",
       handler: function (response: {
         razorpay_payment_id: string;
         razorpay_order_id?: string;
