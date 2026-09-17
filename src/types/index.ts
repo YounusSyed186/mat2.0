@@ -171,6 +171,8 @@ export interface Notification {
   is_read: boolean;
   created_at: string;
   metadata?: string | null;
+  sender_name?: string | null;
+  sender_avatar?: string | null;
 }
 
 export interface SubscriptionPlan {
@@ -184,6 +186,8 @@ export interface SubscriptionPlan {
   profile_view_limit_monthly: number;
   ai_token_limit_monthly: number;
   message_limit_monthly?: number | null;
+  allow_unlimited_photos?: boolean;
+  allow_social_links?: boolean;
   features: string[];
   is_active: boolean;
   created_at: string;

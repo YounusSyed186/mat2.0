@@ -40,7 +40,7 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const logoSrc = "/vivah-logo.png";
+const logoSrc = "/Vivaah vedika.png";
 
 // Memoized NavLink component for better performance
 const NavLink = memo(({
@@ -315,28 +315,30 @@ export function Layout({ children }: LayoutProps) {
           <Link
             to="/browse"
             className={cn(
-              "flex w-full items-center py-6 transition-opacity duration-150 hover:opacity-85",
+              "flex w-full items-center py-4 transition-opacity duration-150 hover:opacity-90",
               sidebarCompact
-                ? "justify-center gap-0 px-0"
-                : "gap-2.5 px-4 sm:px-5"
+                ? "justify-center px-0"
+                : "px-3 sm:px-4"
             )}
+            aria-label="Vivaah Vedika"
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-[0_12px_30px_rgba(0,0,0,0.24)] ring-1 ring-white/50">
-              <img
-                src={logoSrc}
-                alt="Vivaah Vedika"
-                className="h-full w-full rounded-lg object-cover transition-transform duration-150 ease-out group-hover/sidebar:scale-105"
-                style={{ objectPosition: "50% 40%" }}
-              />
-            </div>
-            <span
+            <div
               className={cn(
-                "min-w-0 truncate whitespace-nowrap bg-gradient-to-r from-white to-amber-100 bg-clip-text font-serif text-[1.22rem] font-bold tracking-tight text-transparent transition-[max-width,opacity] duration-150 ease-out",
-                sidebarCompact && "max-w-0 overflow-hidden opacity-0"
+                "flex items-center justify-center transition-all duration-150",
+                sidebarCompact ? "h-10 w-10 overflow-hidden rounded-xl bg-white/90 p-1 dark:bg-white/10" : "w-full py-1"
               )}
             >
-              Vivaah Vedika
-            </span>
+              <img
+                src="/Viviha Vadika Light.png"
+                alt="Vivaah Vedika"
+                className={cn(
+                  "transition-all duration-150",
+                  sidebarCompact
+                    ? "h-full w-full rounded-lg object-cover object-left"
+                    : "w-[65%] h-auto max-h-12.5 object-contain mx-auto"
+                )}
+              />
+            </div>
           </Link>
 
           <ScrollArea className="flex-1">
@@ -437,7 +439,7 @@ export function Layout({ children }: LayoutProps) {
           {/* Mobile Header */}
           <div
             ref={mobileHeaderRef}
-            className="sticky top-0 z-40 bg-white/78 px-4 pb-3 pt-4 backdrop-blur-xl transition-shadow duration-150 dark:bg-slate-950/72 md:hidden"
+            className="sticky top-0 z-50 bg-white/78 px-4 pb-3 pt-4 backdrop-blur-xl transition-shadow duration-150 dark:bg-slate-950/72 md:hidden"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
@@ -453,13 +455,18 @@ export function Layout({ children }: LayoutProps) {
                 ) : (
                   <Link
                     to="/browse"
-                    className="pressable flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1.5 shadow-[0_10px_24px_rgba(15,23,42,0.10)] ring-1 ring-black/5 dark:bg-white/10 dark:ring-white/10"
+                    className="pressable flex h-9 shrink-0 items-center justify-center"
                     aria-label="Vivaah Vedika dashboard"
                   >
                     <img
-                      src={logoSrc}
+                      src="/Vivaah vedika.png"
                       alt="Vivaah Vedika"
-                      className="h-full w-full rounded-xl object-cover"
+                      className="h-8 w-auto max-w-[140px] object-contain dark:hidden"
+                    />
+                    <img
+                      src="/Viviha Vadika Light.png"
+                      alt="Vivaah Vedika"
+                      className="hidden h-8 w-auto max-w-[140px] object-contain dark:block"
                     />
                   </Link>
                 )}
@@ -484,7 +491,7 @@ export function Layout({ children }: LayoutProps) {
           {/* Desktop Header */}
           <header
             ref={desktopHeaderRef}
-            className="hidden shrink-0 items-center justify-between px-7 py-5 transition-[background-color,border-color] duration-150 md:flex"
+            className="relative z-50 hidden shrink-0 items-center justify-between px-7 py-5 transition-[background-color,border-color] duration-150 md:flex"
           >
             <div>
               <h1 className="font-serif text-2xl font-bold text-foreground">{pageTitle}</h1>

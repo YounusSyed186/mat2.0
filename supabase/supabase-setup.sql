@@ -826,22 +826,104 @@ CREATE POLICY "Users can create report evidence for own reports" ON report_evide
     )
   );
 
--- Subscription plan policies
--- Required when RLS is enabled on subscription_plans. Without these, admin updates
--- can silently affect zero visible rows from the browser client.
-ALTER TABLE subscription_plans ENABLE ROW LEVEL SECURITY;
+-- Notification policies & Realtime setup
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS reference_id UUID;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata TEXT;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view active subscription plans" ON subscription_plans;
-CREATE POLICY "Users can view active subscription plans" ON subscription_plans
+DROP POLICY IF EXISTS "Users can view own notifications" ON notifications;
+CREATE POLICY "Users can view own notifications" ON notifications
   FOR SELECT TO authenticated
-  USING (is_active = true OR is_admin_user());
+  USING (user_id = auth.uid());
 
-DROP POLICY IF EXISTS "Admins can manage subscription plans" ON subscription_plans;
-CREATE POLICY "Admins can manage subscription plans" ON subscription_plans
-  FOR ALL TO authenticated
-  USING (is_admin_user())
-  WITH CHECK (is_admin_user());
+DROP POLICY IF EXISTS "Authenticated users can create notifications" ON notifications;
+CREATE POLICY "Authenticated users can create notifications" ON notifications
+  FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() IS NOT NULL);
+
+DROP POLICY IF EXISTS "Users can update own notifications" ON notifications;
+CREATE POLICY "Users can update own notifications" ON notifications
+  FOR UPDATE TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Users can delete own notifications" ON notifications;
+CREATE POLICY "Users can delete own notifications" ON notifications
+  FOR DELETE TO authenticated
+  USING (user_id = auth.uid());
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 UPDATE subscription_plans SET profile_view_limit_monthly = 20, ai_token_limit_monthly = 0 WHERE name = 'Free';
 UPDATE subscription_plans SET profile_view_limit_monthly = 100, ai_token_limit_monthly = 50000 WHERE name = 'Gold';
 UPDATE subscription_plans SET profile_view_limit_monthly = -1, ai_token_limit_monthly = 200000 WHERE name = 'Diamond';
+
+-- Auto notification creation trigger on interest INSERT or UPDATE
+CREATE OR REPLACE FUNCTION notify_on_interest_change()
+RETURNS TRIGGER AS $$
+DECLARE
+  sender_profile_name TEXT;
+BEGIN
+  IF (TG_OP = 'INSERT') THEN
+    SELECT name INTO sender_profile_name FROM profiles WHERE id = NEW.sender_id;
+    INSERT INTO notifications (user_id, type, reference_id, is_read, metadata)
+    VALUES (
+      NEW.receiver_id,
+      'interest_received',
+      NEW.sender_id,
+      false,
+      COALESCE(sender_profile_name, 'Someone')
+    );
+  ELSIF (TG_OP = 'UPDATE' AND OLD.status IS DISTINCT FROM 'accepted' AND NEW.status = 'accepted') THEN
+    SELECT name INTO sender_profile_name FROM profiles WHERE id = NEW.receiver_id;
+    INSERT INTO notifications (user_id, type, reference_id, is_read, metadata)
+    VALUES (
+      NEW.sender_id,
+      'interest_accepted',
+      NEW.receiver_id,
+      false,
+      COALESCE(sender_profile_name, 'Someone')
+    );
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_notify_on_interest_change ON interests;
+CREATE TRIGGER trg_notify_on_interest_change
+AFTER INSERT OR UPDATE ON interests
+FOR EACH ROW EXECUTE FUNCTION notify_on_interest_change();
+
+-- Auto notification creation trigger on message INSERT
+CREATE OR REPLACE FUNCTION notify_on_message_insert()
+RETURNS TRIGGER AS $$
+DECLARE
+  sender_profile_name TEXT;
+BEGIN
+  SELECT name INTO sender_profile_name FROM profiles WHERE id = NEW.sender_id;
+  INSERT INTO notifications (user_id, type, reference_id, is_read, metadata)
+  VALUES (
+    NEW.receiver_id,
+    'message',
+    NEW.sender_id,
+    false,
+    COALESCE(sender_profile_name, 'Someone')
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS trg_notify_on_message_insert ON messages;
+CREATE TRIGGER trg_notify_on_message_insert
+AFTER INSERT ON messages
+FOR EACH ROW EXECUTE FUNCTION notify_on_message_insert();
+
+
+

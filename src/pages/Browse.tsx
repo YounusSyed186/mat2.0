@@ -674,10 +674,11 @@ export default function Browse() {
                       ? "grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-3"
                       : "space-y-3"
                     }>
-                      {profiles.map((profile) => (
+                      {profiles.map((profile, index) => (
                         <ProfileCard
                           key={profile.id}
                           profile={profile}
+                          cardIndex={index}
                           isSaved={savedProfiles.has(profile.id)}
                           relationStatus={profileRelations[profile.id] || "none"}
                           matchReasons={getMatchReasons(profile, myProfile)}

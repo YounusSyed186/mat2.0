@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { Trash2, Edit, Plus, CheckCircle, XCircle } from "lucide-react";
+import { Trash2, Edit, Plus, CheckCircle, XCircle, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 function logSupabaseError(context: string, error: unknown) {
@@ -27,6 +27,7 @@ export function AdminSubscriptions() {
   const [saving, setSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Partial<SubscriptionPlan> | null>(null);
+  const [newFeatureText, setNewFeatureText] = useState("");
 
   const fetchPlans = async () => {
     setLoading(true);
@@ -40,6 +41,8 @@ export function AdminSubscriptions() {
         name: plan.name,
         ai_token_limit_monthly: plan.ai_token_limit_monthly,
         message_limit_monthly: plan.message_limit_monthly,
+        allow_unlimited_photos: plan.allow_unlimited_photos,
+        allow_social_links: plan.allow_social_links,
       })));
       setPlans(data as SubscriptionPlan[]);
     }
@@ -50,11 +53,43 @@ export function AdminSubscriptions() {
     fetchPlans();
   }, []);
 
+  const handleAddFeature = () => {
+    if (!newFeatureText.trim()) return;
+    const currentFeatures = editingPlan?.features || [];
+    setEditingPlan({
+      ...editingPlan,
+      features: [...currentFeatures, newFeatureText.trim()],
+    });
+    setNewFeatureText("");
+  };
+
+  const handleUpdateFeature = (index: number, val: string) => {
+    const currentFeatures = [...(editingPlan?.features || [])];
+    currentFeatures[index] = val;
+    setEditingPlan({
+      ...editingPlan,
+      features: currentFeatures,
+    });
+  };
+
+  const handleRemoveFeature = (index: number) => {
+    const currentFeatures = [...(editingPlan?.features || [])];
+    currentFeatures.splice(index, 1);
+    setEditingPlan({
+      ...editingPlan,
+      features: currentFeatures,
+    });
+  };
+
   const handleSave = async () => {
     if (!editingPlan?.name || editingPlan.price_monthly === undefined || editingPlan.price_monthly === null) {
       toast({ title: "Error", description: "Name and Monthly Price are required", variant: "destructive" });
       return;
     }
+
+    const cleanFeatures = Array.isArray(editingPlan.features)
+      ? editingPlan.features.map((f) => f.trim()).filter((f) => f.length > 0)
+      : [];
 
     const planData = {
       name: editingPlan.name,
@@ -69,8 +104,10 @@ export function AdminSubscriptions() {
         editingPlan.message_limit_monthly === undefined || editingPlan.message_limit_monthly === null
           ? null
           : Number(editingPlan.message_limit_monthly),
+      allow_unlimited_photos: Boolean(editingPlan.allow_unlimited_photos),
+      allow_social_links: Boolean(editingPlan.allow_social_links),
       is_active: editingPlan.is_active ?? true,
-      features: Array.isArray(editingPlan.features) ? editingPlan.features : [],
+      features: cleanFeatures,
     };
 
     console.info("[AdminSubscriptions] Saving subscription plan", {
@@ -179,24 +216,36 @@ export function AdminSubscriptions() {
         <CardTitle className="text-base">Subscription Plans</CardTitle>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button size="sm" onClick={() => setEditingPlan({ is_active: true })}>
+            <Button
+              size="sm"
+              onClick={() => {
+                setEditingPlan({
+                  is_active: true,
+                  allow_unlimited_photos: true,
+                  allow_social_links: true,
+                  features: [],
+                });
+                setNewFeatureText("");
+              }}
+            >
               <Plus className="h-4 w-4 mr-2" />
               Add Plan
             </Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingPlan?.id ? "Edit Plan" : "Create New Plan"}</DialogTitle>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-2">
               <div className="grid gap-2">
-                <Label>Name</Label>
+                <Label>Plan Name</Label>
                 <Input
                   value={editingPlan?.name || ""}
                   onChange={(e) => setEditingPlan({ ...editingPlan, name: e.target.value })}
                   placeholder="e.g. Gold"
                 />
               </div>
+
               <div className="grid gap-2">
                 <Label>Description</Label>
                 <Input
@@ -205,12 +254,13 @@ export function AdminSubscriptions() {
                   placeholder="Plan description..."
                 />
               </div>
+
               <div className="grid grid-cols-3 gap-2">
                 <div className="grid gap-2">
                   <Label>Monthly ($)</Label>
                   <Input
                     type="number"
-                    value={editingPlan?.price_monthly || ""}
+                    value={editingPlan?.price_monthly ?? ""}
                     onChange={(e) => setEditingPlan({ ...editingPlan, price_monthly: Number(e.target.value) })}
                   />
                 </div>
@@ -218,7 +268,7 @@ export function AdminSubscriptions() {
                   <Label>Quarterly ($)</Label>
                   <Input
                     type="number"
-                    value={editingPlan?.price_quarterly || ""}
+                    value={editingPlan?.price_quarterly ?? ""}
                     onChange={(e) => setEditingPlan({ ...editingPlan, price_quarterly: Number(e.target.value) })}
                   />
                 </div>
@@ -226,20 +276,22 @@ export function AdminSubscriptions() {
                   <Label>Yearly ($)</Label>
                   <Input
                     type="number"
-                    value={editingPlan?.price_yearly || ""}
+                    value={editingPlan?.price_yearly ?? ""}
                     onChange={(e) => setEditingPlan({ ...editingPlan, price_yearly: Number(e.target.value) })}
                   />
                 </div>
               </div>
+
               <div className="grid gap-2">
                 <Label>Interest Limit per month</Label>
                 <Input
                   type="number"
-                  value={editingPlan?.interest_limit || ""}
+                  value={editingPlan?.interest_limit ?? ""}
                   onChange={(e) => setEditingPlan({ ...editingPlan, interest_limit: Number(e.target.value) })}
                   placeholder="e.g. 50"
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div className="grid gap-2">
                   <Label>Profile views / month</Label>
@@ -260,17 +312,109 @@ export function AdminSubscriptions() {
                   />
                 </div>
               </div>
+
               <div className="grid gap-2">
                 <Label>Message limit / month</Label>
                 <Input
                   type="number"
                   value={editingPlan?.message_limit_monthly ?? ""}
-                  onChange={(e) => setEditingPlan({ ...editingPlan, message_limit_monthly: e.target.value ? Number(e.target.value) : null })}
+                  onChange={(e) =>
+                    setEditingPlan({
+                      ...editingPlan,
+                      message_limit_monthly: e.target.value ? Number(e.target.value) : null,
+                    })
+                  }
                   placeholder="Leave empty for unlimited"
                 />
               </div>
-              <Button onClick={handleSave} className="mt-4" disabled={saving}>
-                {saving ? "Saving..." : "Save Plan"}
+
+              {/* Entitlement Toggles */}
+              <div className="border border-border/80 rounded-lg p-3 space-y-3 bg-muted/20">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Entitlements & Features Access
+                </h4>
+
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    className="rounded border-input h-4 w-4 text-primary focus:ring-primary"
+                    checked={editingPlan?.allow_unlimited_photos ?? false}
+                    onChange={(e) =>
+                      setEditingPlan({ ...editingPlan, allow_unlimited_photos: e.target.checked })
+                    }
+                  />
+                  <span>Unlimited Profile Picture Views (Unblurred)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    className="rounded border-input h-4 w-4 text-primary focus:ring-primary"
+                    checked={editingPlan?.allow_social_links ?? false}
+                    onChange={(e) =>
+                      setEditingPlan({ ...editingPlan, allow_social_links: e.target.checked })
+                    }
+                  />
+                  <span>Full Social Media Links Access (Unblurred)</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    className="rounded border-input h-4 w-4 text-primary focus:ring-primary"
+                    checked={editingPlan?.is_active ?? true}
+                    onChange={(e) =>
+                      setEditingPlan({ ...editingPlan, is_active: e.target.checked })
+                    }
+                  />
+                  <span>Active Plan (Visible to Users)</span>
+                </label>
+              </div>
+
+              {/* Dynamic Custom Features Bullet Editor */}
+              <div className="grid gap-2">
+                <Label>Custom Feature Bullet Points</Label>
+                <div className="space-y-2">
+                  {(editingPlan?.features || []).map((feature, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <Input
+                        value={feature}
+                        onChange={(e) => handleUpdateFeature(idx, e.target.value)}
+                        placeholder={`Feature #${idx + 1}`}
+                      />
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive flex-shrink-0"
+                        onClick={() => handleRemoveFeature(idx)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <Input
+                      value={newFeatureText}
+                      onChange={(e) => setNewFeatureText(e.target.value)}
+                      placeholder="Add a new feature bullet..."
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddFeature();
+                        }
+                      }}
+                    />
+                    <Button type="button" size="sm" variant="secondary" onClick={handleAddFeature}>
+                      <Plus className="h-4 w-4 mr-1" /> Add
+                    </Button>
+                  </div>
+                </div>
+              </div>
+
+              <Button onClick={handleSave} className="mt-4 w-full" disabled={saving}>
+                {saving ? "Saving Plan..." : "Save Plan"}
               </Button>
             </div>
           </DialogContent>
@@ -290,7 +434,7 @@ export function AdminSubscriptions() {
                 <tr className="border-b border-border text-left">
                   <th className="pb-2 font-medium text-muted-foreground">Name</th>
                   <th className="pb-2 font-medium text-muted-foreground">Monthly</th>
-                  <th className="pb-2 font-medium text-muted-foreground">Limits</th>
+                  <th className="pb-2 font-medium text-muted-foreground">Limits & Entitlements</th>
                   <th className="pb-2 font-medium text-muted-foreground">Status</th>
                   <th className="pb-2 font-medium text-muted-foreground">Actions</th>
                 </tr>
@@ -305,6 +449,15 @@ export function AdminSubscriptions() {
                       <div>{p.profile_view_limit_monthly < 0 ? "Unlimited" : p.profile_view_limit_monthly} profile views</div>
                       <div>{p.ai_token_limit_monthly.toLocaleString()} AI tokens</div>
                       <div>{p.message_limit_monthly ?? "Unlimited"} messages</div>
+                      <div className="font-semibold text-foreground/80 mt-0.5">
+                        {p.allow_unlimited_photos ? "✓ Unlimited Photos" : "✗ Photos Blurred"} |{" "}
+                        {p.allow_social_links ? "✓ Social Access" : "✗ Social Blurred"}
+                      </div>
+                      {p.features && p.features.length > 0 && (
+                        <div className="text-[11px] text-muted-foreground italic mt-0.5">
+                          + {p.features.length} custom feature(s)
+                        </div>
+                      )}
                     </td>
                     <td className="py-2.5">
                       {p.is_active ? (
@@ -321,6 +474,7 @@ export function AdminSubscriptions() {
                           className="h-7 text-xs"
                           onClick={() => {
                             setEditingPlan(p);
+                            setNewFeatureText("");
                             setIsDialogOpen(true);
                           }}
                         >

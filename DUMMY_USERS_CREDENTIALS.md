@@ -15,7 +15,16 @@ All accounts listed below are fully provisioned in the Supabase backend with:
 
 ---
 
-## 🔑 Key Admin & Featured Accounts
+## 🔑 Dedicated Generic Admin Accounts
+
+| # | Name | Role | Email | Password | City | Profession |
+|---|---|---|---|---|---|---|
+| **1** | **InspiringWave Admin** | `primary_admin` | `adminIW@vivaahvedika.com` | `Password123!` | Bangalore | Platform Administrator |
+| **2** | **System Admin** | `admin` | `admin@vivaahvedika.com` | `Password123!` | Mumbai | System Administrator |
+
+---
+
+## 🌟 Featured Profiles & User Accounts
 
 | # | Name | Role | Email | Password | City | Profession | Subscription |
 |---|---|---|---|---|---|---|---|

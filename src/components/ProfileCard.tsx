@@ -18,6 +18,7 @@ import type { Profile } from "@/types";
 import type { ProfileRelationStatus } from "@/lib/profileJourney";
 import { cn } from "@/lib/utils";
 import { memo } from "react";
+import { usePlanEntitlements } from "@/hooks/usePlanEntitlements";
 
 interface ProfileCardProps {
   profile: Profile;
@@ -29,6 +30,7 @@ interface ProfileCardProps {
   onSave?: (profileId: string) => void;
   onSendInterest?: (profileId: string) => void;
   className?: string;
+  cardIndex?: number;
 }
 
 export const ProfileCard = memo(function ProfileCard({
@@ -41,7 +43,10 @@ export const ProfileCard = memo(function ProfileCard({
   onSave,
   onSendInterest,
   className,
+  cardIndex,
 }: ProfileCardProps) {
+  const { canViewProfilePhoto } = usePlanEntitlements();
+  const photoUnlocked = canViewProfilePhoto(cardIndex);
   const hasSimilarity = typeof similarity === "number";
   const profileHref = `/user/${profile.id}`;
   const canSendInterest = relationStatus === "none" && onSendInterest;
@@ -59,7 +64,7 @@ export const ProfileCard = memo(function ProfileCard({
         <div className="flex items-start justify-between gap-3">
           <Link to={profileHref} className="flex min-w-0 flex-1 items-center gap-3">
             <div className="relative shrink-0">
-              <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} size="lg" />
+              <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} size="lg" blurred={!photoUnlocked} />
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="truncate font-serif text-base font-bold text-foreground transition-colors group-hover:text-primary">

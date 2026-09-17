@@ -15,7 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const logoSrc = "/vivah-logo.png";
+const logoSrc = "/Vivaah vedika.png";
 const heroImage =
   "https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&fm=jpg&q=86&w=1600";
 const detailImage =
@@ -99,11 +99,12 @@ function MotionBlock({
 
 function Logo() {
   return (
-    <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="Vivaah Vedika home">
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white p-1 shadow-sm ring-1 ring-black/5">
-        <img src={logoSrc} alt="" className="h-full w-full rounded-xl object-cover" />
-      </span>
-      <span className="truncate font-serif text-xl font-bold text-slate-950 dark:text-white">Vivaah Vedika</span>
+    <Link to="/" className="flex min-w-0 items-center" aria-label="Vivaah Vedika home">
+      <img
+        src="/Vivaah vedika.png"
+        alt="Vivaah Vedika"
+        className="h-11 sm:h-12 w-auto max-w-[240px] object-contain transition-transform duration-200 hover:scale-105"
+      />
     </Link>
   );
 }

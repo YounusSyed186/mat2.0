@@ -21,8 +21,22 @@ function notifIcon(type: Notification['type']) {
   }
 }
 
-function notifLabel(type: Notification['type'], metadata?: string | null) {
-  const name = metadata || 'Someone';
+function notifLabel(type: Notification['type'], senderName?: string | null, metadata?: string | null) {
+  let name = senderName || '';
+  if (!name && metadata) {
+    try {
+      if (metadata.trim().startsWith('{')) {
+        const parsed = JSON.parse(metadata);
+        name = parsed.sender_name || parsed.name || '';
+      } else {
+        name = metadata;
+      }
+    } catch {
+      name = metadata;
+    }
+  }
+  if (!name) name = 'Someone';
+
   switch (type) {
     case 'interest_received':
       return `${name} sent you an interest`;
@@ -43,12 +57,12 @@ export function NotificationBell() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser?.id) {
       fetchNotifications(currentUser.id);
       subscribeToNotifications(currentUser.id);
     }
     return () => unsubscribe();
-  }, [currentUser?.id]);
+  }, [currentUser?.id, fetchNotifications, subscribeToNotifications, unsubscribe]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -70,19 +84,28 @@ export function NotificationBell() {
     }
   };
 
+  const safeFormatDate = (dateStr: string) => {
+    try {
+      return formatDistanceToNow(new Date(dateStr), { addSuffix: true });
+    } catch {
+      return 'Recently';
+    }
+  };
+
   return (
-    <div className="relative" ref={dropdownRef}>
+    <div className="relative z-50" ref={dropdownRef}>
       <Button
         variant="ghost"
         size="icon"
         className="relative"
         onClick={() => setOpen(!open)}
         data-testid="notification-bell"
+        aria-label="Notifications"
       >
         <Bell className="h-4 w-4" />
         {unreadCount > 0 && (
           <span
-            className="absolute -top-0.5 -right-0.5 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1"
+            className="absolute -top-0.5 -right-0.5 h-4 min-w-4 flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1 animate-pulse"
             data-testid="notification-unread-count"
           >
             {unreadCount > 99 ? '99+' : unreadCount}
@@ -92,14 +115,14 @@ export function NotificationBell() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-80 bg-card border border-border rounded-lg shadow-lg z-50 overflow-hidden"
+          className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-card border border-border rounded-lg shadow-2xl z-[100] overflow-hidden"
           data-testid="notification-dropdown"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-border">
             <h3 className="font-medium text-sm text-foreground">Notifications</h3>
             {unreadCount > 0 && currentUser && (
               <button
-                className="text-xs text-primary hover:underline"
+                className="text-xs text-primary hover:underline font-medium"
                 onClick={() => markAllAsRead(currentUser.id)}
                 data-testid="mark-all-read-btn"
               >
@@ -119,17 +142,17 @@ export function NotificationBell() {
                   key={n.id}
                   onClick={() => handleNotifClick(n)}
                   className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-muted/50 transition-colors border-b border-border last:border-0 ${
-                    !n.is_read ? 'bg-primary/5' : ''
+                    !n.is_read ? 'bg-primary/5 font-medium' : ''
                   }`}
                   data-testid={`notification-item-${n.id}`}
                 >
                   <div className="mt-0.5">{notifIcon(n.type)}</div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${!n.is_read ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                      {notifLabel(n.type, n.metadata)}
+                      {notifLabel(n.type, n.sender_name, n.metadata)}
                     </p>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {formatDistanceToNow(new Date(n.created_at), { addSuffix: true })}
+                      {safeFormatDate(n.created_at)}
                     </p>
                   </div>
                   {!n.is_read && (

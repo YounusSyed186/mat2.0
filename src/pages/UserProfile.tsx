@@ -24,6 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { usePlanEntitlements } from "@/hooks/usePlanEntitlements";
 import {
   ArrowLeft,
   Ban,
@@ -32,12 +33,14 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  Crown,
   Dumbbell,
   Flag,
   Globe,
   GraduationCap,
   Heart,
   Home,
+  Lock,
   MapPin,
   MessageCircle,
   Palette,
@@ -125,6 +128,7 @@ export default function UserProfile() {
   const { currentUser, profile: myProfile } = useAuth();
   const { isBlocked, isBlockedBy, isBlockRelation, blockUser, unblockUser, fetchBlocks } = useBlockStore();
   const { createNotification } = useNotificationStore();
+  const { canViewProfilePhoto, canViewSocialLinks } = usePlanEntitlements();
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [interest, setInterest] = useState<Interest | null>(null);
@@ -227,7 +231,7 @@ export default function UserProfile() {
 
     const { data, error } = await supabase
       .from("interests")
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({ status })
       .eq("id", reverseInterest.id)
       .select()
       .maybeSingle();
@@ -465,13 +469,32 @@ export default function UserProfile() {
             <div className="grid lg:grid-cols-[minmax(300px,380px)_1fr]">
               <div className="relative min-h-[340px] overflow-hidden bg-[linear-gradient(135deg,hsl(var(--primary)/0.18),hsl(var(--accent)/0.30))] lg:min-h-[500px]">
                 {profile.avatar_url ? (
-                  <img src={profile.avatar_url} alt={profile.name} className="h-full min-h-[340px] w-full object-cover lg:min-h-[500px]" />
+                  <img
+                    src={profile.avatar_url}
+                    alt={profile.name}
+                    className={`h-full min-h-[340px] w-full object-cover lg:min-h-[500px] transition-all ${
+                      !canViewProfilePhoto() ? "filter blur-lg scale-110 pointer-events-none select-none brightness-90" : ""
+                    }`}
+                  />
                 ) : (
                   <div className="flex h-full min-h-[340px] items-center justify-center lg:min-h-[500px]">
-                    <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} className="h-44 w-44 border-8 border-background shadow-xl" />
+                    <UserAvatar name={profile.name} avatarUrl={profile.avatar_url} blurred={!canViewProfilePhoto()} className="h-44 w-44 border-8 border-background shadow-xl" />
                   </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/12 to-transparent" />
+                {!canViewProfilePhoto() && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-xs flex flex-col items-center justify-center p-6 text-center z-10">
+                    <Badge className="mb-3 border-amber-500/40 bg-amber-500/90 text-white shadow-md gap-1.5 px-3 py-1.5 text-xs">
+                      <Lock className="h-3.5 w-3.5" /> Photo Blurred • Free Plan
+                    </Badge>
+                    <p className="text-xs text-white/90 max-w-xs mb-3">
+                      Upgrade to Premium to view full profile photos and social links
+                    </p>
+                    <Button size="sm" className="premium-cta rounded-full text-xs font-bold gap-1.5 shadow-md" onClick={() => navigate('/subscriptions')}>
+                      <Crown className="h-3.5 w-3.5" /> Upgrade to View
+                    </Button>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/72 via-black/12 to-transparent pointer-events-none" />
                 <div className="absolute bottom-0 left-0 right-0 p-5 text-white">
                   <Badge className="mb-3 border-white/20 bg-white/18 text-white backdrop-blur">
                     {relationCopy[relationStatus]}
@@ -607,64 +630,85 @@ export default function UserProfile() {
               </Card>
 
               {(profile.instagram_url || profile.facebook_url || profile.linkedin_url || profile.twitter_url || profile.other_social_url) && (
-                <Card className="border-card-border bg-card/95 shadow-sm">
+                <Card className="border-card-border bg-card/95 shadow-sm relative overflow-hidden">
                   <CardContent className="p-5">
-                    <h2 className="text-sm font-bold text-foreground mb-3">Social Presence</h2>
-                    <div className="flex flex-col gap-2">
-                      {profile.instagram_url && (
-                        <a
-                          href={profile.instagram_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                        >
-                          <Globe className="h-4 w-4 text-pink-500" />
-                          <span className="truncate">Instagram</span>
-                        </a>
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-sm font-bold text-foreground">Social Presence</h2>
+                      {!canViewSocialLinks && (
+                        <Badge variant="outline" className="border-amber-500/40 text-amber-600 dark:text-amber-400 gap-1 text-[10px]">
+                          <Lock className="h-2.5 w-2.5" /> Premium
+                        </Badge>
                       )}
-                      {profile.facebook_url && (
-                        <a
-                          href={profile.facebook_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                        >
-                          <Globe className="h-4 w-4 text-blue-600" />
-                          <span className="truncate">Facebook</span>
-                        </a>
-                      )}
-                      {profile.linkedin_url && (
-                        <a
-                          href={profile.linkedin_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                        >
-                          <Globe className="h-4 w-4 text-blue-700" />
-                          <span className="truncate">LinkedIn</span>
-                        </a>
-                      )}
-                      {profile.twitter_url && (
-                        <a
-                          href={profile.twitter_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                        >
-                          <Globe className="h-4 w-4 text-sky-500" />
-                          <span className="truncate">X / Twitter</span>
-                        </a>
-                      )}
-                      {profile.other_social_url && (
-                        <a
-                          href={profile.other_social_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
-                        >
-                          <Globe className="h-4 w-4 text-primary" />
-                          <span className="truncate">Website / Profile</span>
-                        </a>
+                    </div>
+
+                    <div className="relative">
+                      <div className={`flex flex-col gap-2 transition-all ${!canViewSocialLinks ? "filter blur-sm opacity-50 pointer-events-none select-none" : ""}`}>
+                        {profile.instagram_url && (
+                          <a
+                            href={canViewSocialLinks ? profile.instagram_url : "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Globe className="h-4 w-4 text-pink-500" />
+                            <span className="truncate">Instagram</span>
+                          </a>
+                        )}
+                        {profile.facebook_url && (
+                          <a
+                            href={canViewSocialLinks ? profile.facebook_url : "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Globe className="h-4 w-4 text-blue-600" />
+                            <span className="truncate">Facebook</span>
+                          </a>
+                        )}
+                        {profile.linkedin_url && (
+                          <a
+                            href={canViewSocialLinks ? profile.linkedin_url : "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Globe className="h-4 w-4 text-blue-700" />
+                            <span className="truncate">LinkedIn</span>
+                          </a>
+                        )}
+                        {profile.twitter_url && (
+                          <a
+                            href={canViewSocialLinks ? profile.twitter_url : "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Globe className="h-4 w-4 text-sky-500" />
+                            <span className="truncate">X / Twitter</span>
+                          </a>
+                        )}
+                        {profile.other_social_url && (
+                          <a
+                            href={canViewSocialLinks ? profile.other_social_url : "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2.5 rounded-xl border border-border/70 bg-background/60 p-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted"
+                          >
+                            <Globe className="h-4 w-4 text-primary" />
+                            <span className="truncate">Website / Profile</span>
+                          </a>
+                        )}
+                      </div>
+
+                      {!canViewSocialLinks && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center rounded-xl bg-background/80 p-3 text-center backdrop-blur-xs z-10">
+                          <Lock className="h-5 w-5 text-amber-500 mb-1" />
+                          <p className="text-xs font-semibold text-foreground">Social links are locked</p>
+                          <p className="text-[11px] text-muted-foreground mb-2">Upgrade to Gold or Diamond to view social links</p>
+                          <Button size="sm" className="premium-cta h-7 rounded-full text-[11px] font-bold px-3 shadow-none gap-1" onClick={() => navigate('/subscriptions')}>
+                            <Crown className="h-3 w-3" /> Upgrade Now
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </CardContent>

@@ -407,6 +407,28 @@ export default function Subscription() {
                           <Check className="w-3 h-3 text-primary" />
                         </div>
                         <span className="text-sm font-medium">
+                          {plan.allow_unlimited_photos || (plan.name !== "Free" && plan.allow_unlimited_photos === undefined)
+                            ? "Unlimited profile picture views"
+                            : "Top 3 profile picture views (others blurred)"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Check className="w-3 h-3 text-primary" />
+                        </div>
+                        <span className="text-sm font-medium">
+                          {plan.allow_social_links || (plan.name !== "Free" && plan.allow_social_links === undefined)
+                            ? "Full social media links access"
+                            : "Blurred / locked social media links"}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                          <Check className="w-3 h-3 text-primary" />
+                        </div>
+                        <span className="text-sm font-medium">
                           {plan.interest_limit} interests per month
                         </span>
                       </div>
@@ -429,14 +451,25 @@ export default function Subscription() {
                         </span>
                       </div>
 
-                      {plan.features?.map((feature: string, i: number) => (
-                        <div key={i} className="flex items-center gap-3">
-                          <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
-                            <Check className="w-3 h-3 text-primary" />
+                      {plan.features
+                        ?.filter((feature: string) => {
+                          const lower = feature.toLowerCase();
+                          return !(
+                            lower.includes("interests per month") ||
+                            lower.includes("ai tokens per month") ||
+                            lower.includes("messages per month") ||
+                            lower.includes("profile picture views") ||
+                            lower.includes("social media links access")
+                          );
+                        })
+                        .map((feature: string, i: number) => (
+                          <div key={i} className="flex items-center gap-3">
+                            <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center">
+                              <Check className="w-3 h-3 text-primary" />
+                            </div>
+                            <span className="text-sm text-muted-foreground">{feature}</span>
                           </div>
-                          <span className="text-sm text-muted-foreground">{feature}</span>
-                        </div>
-                      ))}
+                        ))}
                     </div>
                   </CardContent>
                   <CardFooter className="flex flex-col gap-2">

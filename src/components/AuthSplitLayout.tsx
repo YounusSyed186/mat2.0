@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, HeartHandshake, ShieldCheck, Sparkles } from "lu
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const logoSrc = "/vivah-logo.png";
+const logoSrc = "/Vivaah vedika.png";
 const authVisualSlides = [
   {
     src: "https://images.unsplash.com/photo-1756376748107-12c98ec6b969?auto=format&fit=crop&fm=jpg&q=85&w=1600",
@@ -233,16 +233,12 @@ export function AuthSplitLayout({
           </div>
 
           <header className="flex shrink-0 items-center justify-between gap-4 px-5 py-5 sm:px-10 lg:px-12">
-            <Link to="/" className="flex min-w-0 items-center gap-3">
-              <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white p-1 shadow-sm ring-1 ring-black/5">
-                <img
-                  src={logoSrc}
-                  alt="Vivaah Vedika"
-                  className="h-full w-full rounded-lg object-cover"
-                  style={{ objectPosition: "50% 40%" }}
-                />
-              </span>
-              <span className="truncate font-serif text-2xl font-bold text-foreground">Vivaah Vedika</span>
+            <Link to="/" className="flex min-w-0 items-center" aria-label="Vivaah Vedika">
+              <img
+                src="/Viviha Vadika Light.png"
+                alt="Vivaah Vedika"
+                className="h-9 w-auto max-w-[200px] object-contain"
+              />
             </Link>
 
             {actionHref && actionLabel && (

@@ -150,7 +150,7 @@ export default function Interests() {
   ) => {
     const { error } = await supabase
       .from("interests")
-      .update({ status, updated_at: new Date().toISOString() })
+      .update({ status })
       .eq("id", interestId);
 
     if (error) {
