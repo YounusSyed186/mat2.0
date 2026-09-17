@@ -40,8 +40,6 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
-const logoSrc = "/Vivaah vedika.png";
-
 // Memoized NavLink component for better performance
 const NavLink = memo(({
   href,

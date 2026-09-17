@@ -15,7 +15,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
-const logoSrc = "/Vivaah vedika.png";
 const heroImage =
   "https://images.unsplash.com/photo-1520854221256-17451cc331bf?auto=format&fit=crop&fm=jpg&q=86&w=1600";
 const detailImage =

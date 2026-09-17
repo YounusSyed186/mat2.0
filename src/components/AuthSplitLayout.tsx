@@ -4,7 +4,6 @@ import { ArrowLeft, ArrowRight, HeartHandshake, ShieldCheck, Sparkles } from "lu
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const logoSrc = "/Vivaah vedika.png";
 const authVisualSlides = [
   {
     src: "https://images.unsplash.com/photo-1756376748107-12c98ec6b969?auto=format&fit=crop&fm=jpg&q=85&w=1600",

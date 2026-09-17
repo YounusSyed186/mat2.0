@@ -9,7 +9,8 @@ export function usePlanEntitlements() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUser) {
+    const userId = currentUser?.id;
+    if (!userId) {
       setActivePlan(null);
       setIsLoading(false);
       return;
@@ -22,7 +23,7 @@ export function usePlanEntitlements() {
         const { data, error } = await supabase
           .from("user_subscriptions")
           .select("*, plan:subscription_plans(*)")
-          .eq("user_id", currentUser.id)
+          .eq("user_id", userId)
           .eq("status", "active")
           .gte("end_date", new Date().toISOString())
           .order("created_at", { ascending: false })
