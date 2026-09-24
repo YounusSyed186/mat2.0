@@ -20,8 +20,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  ExternalLink,
-  FileText,
   Globe,
   HeartHandshake,
   Info,
@@ -33,8 +31,6 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
-  Trash2,
-  Upload,
   UserCircle,
   X,
 } from "lucide-react";
@@ -141,10 +137,8 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [uploadingHoroscope, setUploadingHoroscope] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const horoscopeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Input states for tag arrays
   const [mustHaveInput, setMustHaveInput] = useState("");
@@ -364,72 +358,6 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
     setUploadingPhoto(false);
   };
 
-  const handleHoroscopeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !currentUser) return;
-
-    if (file.size > 10 * 1024 * 1024) {
-      toast({ title: "File too large", description: "Horoscope document must be under 10MB", variant: "destructive" });
-      return;
-    }
-    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
-    const isImage = file.type.startsWith("image/");
-    if (!isPdf && !isImage) {
-      toast({ title: "Invalid file type", description: "Please upload a PDF document or an image (JPG, PNG, WebP).", variant: "destructive" });
-      return;
-    }
-
-    setUploadingHoroscope(true);
-    try {
-      const ext = file.name.split(".").pop() || (isPdf ? "pdf" : "jpg");
-      const filePath = `${currentUser.id}/horoscope_${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("profile-photos")
-        .upload(filePath, file, { upsert: true });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data: urlData } = supabase.storage
-        .from("profile-photos")
-        .getPublicUrl(filePath);
-
-      setForm((prev) => ({
-        ...prev,
-        horoscope_url: urlData.publicUrl,
-      }));
-
-      toast({
-        title: "Horoscope Document Attached",
-        description: "Your Kundli/Horoscope file has been uploaded successfully.",
-      });
-    } catch (err: any) {
-      toast({
-        title: "Upload failed",
-        description: err.message || "Failed to upload horoscope document.",
-        variant: "destructive",
-      });
-    } finally {
-      setUploadingHoroscope(false);
-      if (horoscopeFileInputRef.current) {
-        horoscopeFileInputRef.current.value = "";
-      }
-    }
-  };
-
-  const handleRemoveHoroscopeFile = () => {
-    setForm((prev) => ({ ...prev, horoscope_url: "" }));
-    if (horoscopeFileInputRef.current) {
-      horoscopeFileInputRef.current.value = "";
-    }
-    toast({
-      title: "Horoscope Document Removed",
-      description: "You can upload a new horoscope document at any time.",
-    });
-  };
-
   const handleClearHoroscopeDetails = () => {
     setForm((prev) => ({
       ...prev,
@@ -441,9 +369,6 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
       birth_time: "",
       horoscope_url: "",
     }));
-    if (horoscopeFileInputRef.current) {
-      horoscopeFileInputRef.current.value = "";
-    }
     toast({
       title: "Horoscope details cleared",
       description: "Astrological fields have been reset.",
@@ -1071,103 +996,6 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
                           Optional
                         </span>
                       )}
-                    </div>
-                  </div>
-
-                  {/* Hidden Horoscope Document File Input */}
-                  <input
-                    ref={horoscopeFileInputRef}
-                    type="file"
-                    accept=".pdf,image/png,image/jpeg,image/webp,image/jpg"
-                    onChange={handleHoroscopeFileChange}
-                    className="hidden"
-                  />
-
-                  {/* Kundli Document Attachment Card */}
-                  <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background/80 via-card to-primary/[0.03] p-4 shadow-sm">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                          <FileText className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Kundli / Horoscope Document</h4>
-                          <p className="text-xs text-muted-foreground">
-                            {form.horoscope_url
-                              ? "Horoscope document attached. Matches can view your Kundli chart upon mutual interest."
-                              : "Upload your Kundli chart or Janampatri (PDF or Image, max 10MB)."}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        {form.horoscope_url ? (
-                          <>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              asChild
-                              className="h-8 rounded-lg text-xs"
-                            >
-                              <a href={form.horoscope_url} target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-1.5 h-3.5 w-3.5 text-primary" />
-                                View Document
-                              </a>
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={uploadingHoroscope}
-                              onClick={() => horoscopeFileInputRef.current?.click()}
-                              className="h-8 rounded-lg text-xs"
-                            >
-                              {uploadingHoroscope ? (
-                                <>
-                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                                  Uploading...
-                                </>
-                              ) : (
-                                <>
-                                  <Upload className="mr-1.5 h-3.5 w-3.5" />
-                                  Change Document
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={handleRemoveHoroscopeFile}
-                              className="h-8 rounded-lg text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </>
-                        ) : (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            disabled={uploadingHoroscope}
-                            onClick={() => horoscopeFileInputRef.current?.click()}
-                            className="h-9 rounded-xl border-dashed border-primary/40 bg-primary/[0.04] px-4 text-xs font-semibold text-primary hover:bg-primary/10"
-                          >
-                            {uploadingHoroscope ? (
-                              <>
-                                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
-                                Uploading Horoscope...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="mr-1.5 h-4 w-4" />
-                                Attach Horoscope / Kundli File
-                              </>
-                            )}
-                          </Button>
-                        )}
-                      </div>
                     </div>
                   </div>
 
