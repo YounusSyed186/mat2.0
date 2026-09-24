@@ -1084,7 +1084,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
                   />
 
                   {/* Kundli Document Attachment Card */}
-                  {/* <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background/80 via-card to-primary/[0.03] p-4 shadow-sm">
+                  <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background/80 via-card to-primary/[0.03] p-4 shadow-sm">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <div className="flex items-start gap-3">
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
@@ -1169,7 +1169,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
                         )}
                       </div>
                     </div>
-                  </div> */}
+                  </div>
 
                   {/* Structured Astrology Fields */}
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
