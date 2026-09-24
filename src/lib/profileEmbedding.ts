@@ -77,8 +77,22 @@ export function buildProfileEmbeddingDocument(profile: Partial<Profile> | Record
     backgroundLines.push(`Willing to relocate: ${willingToRelocate ? "Yes" : "No"}`);
   }
 
+  const rashi = cleanText(p.rashi as string);
+  const nakshatra = cleanText(p.nakshatra as string);
+  const manglikStatus = cleanText(p.manglik_status as string);
+  const gotra = cleanText(p.gotra as string);
+  const birthPlace = cleanText(p.birth_place as string);
+  const birthTime = cleanText(p.birth_time as string);
+
+  if (rashi) backgroundLines.push(`Rashi (Moon Sign): ${rashi}`);
+  if (nakshatra) backgroundLines.push(`Nakshatra: ${nakshatra}`);
+  if (manglikStatus && manglikStatus !== "dont_know") backgroundLines.push(`Manglik Status: ${manglikStatus}`);
+  if (gotra) backgroundLines.push(`Gotra: ${gotra}`);
+  if (birthPlace) backgroundLines.push(`Birth Place: ${birthPlace}`);
+  if (birthTime) backgroundLines.push(`Birth Time: ${birthTime}`);
+
   if (backgroundLines.length > 0) {
-    lines.push("BACKGROUND", ...backgroundLines, "");
+    lines.push("BACKGROUND & HOROSCOPE", ...backgroundLines, "");
   }
 
   // ── SECTION 3: PERSONALITY & LIFESTYLE ──

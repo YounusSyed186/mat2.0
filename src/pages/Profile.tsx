@@ -20,6 +20,8 @@ import {
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
+  FileText,
   Globe,
   HeartHandshake,
   Info,
@@ -27,15 +29,20 @@ import {
   LockKeyhole,
   MapPin,
   Plus,
+  RotateCcw,
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Trash2,
+  Upload,
   UserCircle,
   X,
 } from "lucide-react";
 import { generateEmbedding, buildProfileEmbeddingDocument } from "@/lib/ai";
 import { getProfileCompletion } from "@/lib/profileJourney";
 import { cn } from "@/lib/utils";
+
+import { RASHI_LIST, NAKSHATRA_LIST, MANGLIK_OPTIONS } from "@/lib/horoscope";
 
 interface ProfilePageProps {
   mode: "create" | "edit";
@@ -62,6 +69,16 @@ type ProfileFormState = {
   languages: string[];
   ethnicity: string;
   willing_to_relocate: boolean;
+
+  // Horoscope & Kundli Details (Own)
+  rashi: string;
+  nakshatra: string;
+  manglik_status: string;
+  birth_place: string;
+  birth_time: string;
+  gotra: string;
+  horoscope_url: string;
+
   introvert_extrovert: number;
   hobbies: string[];
   habits: string;
@@ -109,6 +126,12 @@ type ProfileFormState = {
   partner_marital_status: string;
   partner_must_have: string[];
   partner_deal_breakers: string[];
+
+  // Partner Horoscope Preferences
+  partner_horoscope_required: boolean;
+  partner_manglik: string;
+  partner_rashi: string[];
+  partner_nakshatra: string[];
 };
 
 export default function ProfilePage({ mode }: ProfilePageProps) {
@@ -118,8 +141,10 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
   const [loading, setLoading] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [uploadingHoroscope, setUploadingHoroscope] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const horoscopeFileInputRef = useRef<HTMLInputElement>(null);
 
   // Input states for tag arrays
   const [mustHaveInput, setMustHaveInput] = useState("");
@@ -138,6 +163,16 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
     languages: [] as string[],
     ethnicity: "",
     willing_to_relocate: false,
+
+    // Horoscope & Kundli Details (Own)
+    rashi: "",
+    nakshatra: "",
+    manglik_status: "dont_know",
+    birth_place: "",
+    birth_time: "",
+    gotra: "",
+    horoscope_url: "",
+
     introvert_extrovert: 5,
     hobbies: [] as string[],
     habits: "",
@@ -185,6 +220,12 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
     partner_marital_status: "",
     partner_must_have: [] as string[],
     partner_deal_breakers: [] as string[],
+
+    // Partner Horoscope Preferences
+    partner_horoscope_required: false,
+    partner_manglik: "any",
+    partner_rashi: [] as string[],
+    partner_nakshatra: [] as string[],
   });
 
   useEffect(() => {
@@ -202,6 +243,16 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
         languages: profile.languages || [],
         ethnicity: profile.ethnicity || "",
         willing_to_relocate: profile.willing_to_relocate || false,
+
+        // Horoscope & Kundli Details (Own)
+        rashi: profile.rashi || "",
+        nakshatra: profile.nakshatra || "",
+        manglik_status: profile.manglik_status || "dont_know",
+        birth_place: profile.birth_place || "",
+        birth_time: profile.birth_time || "",
+        gotra: profile.gotra || "",
+        horoscope_url: profile.horoscope_url || "",
+
         introvert_extrovert: profile.introvert_extrovert || 5,
         hobbies: profile.hobbies || [],
         habits: profile.habits || "",
@@ -249,6 +300,12 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
         partner_marital_status: profile.partner_marital_status || "",
         partner_must_have: profile.partner_must_have || [],
         partner_deal_breakers: profile.partner_deal_breakers || [],
+
+        // Partner Horoscope Preferences
+        partner_horoscope_required: Boolean(profile.partner_horoscope_required),
+        partner_manglik: profile.partner_manglik || "any",
+        partner_rashi: profile.partner_rashi || [],
+        partner_nakshatra: profile.partner_nakshatra || [],
       };
 
       const timeoutId = window.setTimeout(() => {
@@ -305,6 +362,92 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
     setForm((prev) => ({ ...prev, avatar_url: cleanUrl }));
     toast({ title: "Photo uploaded!" });
     setUploadingPhoto(false);
+  };
+
+  const handleHoroscopeFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Horoscope document must be under 10MB", variant: "destructive" });
+      return;
+    }
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) {
+      toast({ title: "Invalid file type", description: "Please upload a PDF document or an image (JPG, PNG, WebP).", variant: "destructive" });
+      return;
+    }
+
+    setUploadingHoroscope(true);
+    try {
+      const ext = file.name.split(".").pop() || (isPdf ? "pdf" : "jpg");
+      const filePath = `${currentUser.id}/horoscope_${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("profile-photos")
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from("profile-photos")
+        .getPublicUrl(filePath);
+
+      setForm((prev) => ({
+        ...prev,
+        horoscope_url: urlData.publicUrl,
+      }));
+
+      toast({
+        title: "Horoscope Document Attached",
+        description: "Your Kundli/Horoscope file has been uploaded successfully.",
+      });
+    } catch (err: any) {
+      toast({
+        title: "Upload failed",
+        description: err.message || "Failed to upload horoscope document.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingHoroscope(false);
+      if (horoscopeFileInputRef.current) {
+        horoscopeFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemoveHoroscopeFile = () => {
+    setForm((prev) => ({ ...prev, horoscope_url: "" }));
+    if (horoscopeFileInputRef.current) {
+      horoscopeFileInputRef.current.value = "";
+    }
+    toast({
+      title: "Horoscope Document Removed",
+      description: "You can upload a new horoscope document at any time.",
+    });
+  };
+
+  const handleClearHoroscopeDetails = () => {
+    setForm((prev) => ({
+      ...prev,
+      rashi: "",
+      nakshatra: "",
+      manglik_status: "dont_know",
+      gotra: "",
+      birth_place: "",
+      birth_time: "",
+      horoscope_url: "",
+    }));
+    if (horoscopeFileInputRef.current) {
+      horoscopeFileInputRef.current.value = "";
+    }
+    toast({
+      title: "Horoscope details cleared",
+      description: "Astrological fields have been reset.",
+    });
   };
 
   const handleAddMustHave = () => {
@@ -400,6 +543,16 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
       twitter_url: form.twitter_url || null,
       other_social_url: form.other_social_url || null,
 
+      // Own Horoscope Details
+      rashi: form.rashi || null,
+      nakshatra: form.nakshatra || null,
+      manglik_status: form.manglik_status || null,
+      birth_place: form.birth_place || null,
+      birth_time: form.birth_time || null,
+      gotra: form.gotra || null,
+      horoscope_url: form.horoscope_url || null,
+      horoscope_available: Boolean(form.rashi || form.nakshatra || (form.manglik_status && form.manglik_status !== 'dont_know') || (form.birth_time && form.birth_place)),
+
       // Partner Preferences
       partner_age_min: pAgeMinNum,
       partner_age_max: pAgeMaxNum,
@@ -423,6 +576,12 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
       partner_marital_status: form.partner_marital_status || null,
       partner_must_have: form.partner_must_have,
       partner_deal_breakers: form.partner_deal_breakers,
+
+      // Partner Horoscope Preferences
+      partner_horoscope_required: form.partner_horoscope_required,
+      partner_manglik: form.partner_manglik || "any",
+      partner_rashi: form.partner_rashi,
+      partner_nakshatra: form.partner_nakshatra,
 
       role: profile?.role || "user",
       is_blocked: profile?.is_blocked || false,
@@ -477,6 +636,20 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
       languages: form.languages,
       ethnicity: form.ethnicity,
       willing_to_relocate: form.willing_to_relocate,
+      rashi: form.rashi || undefined,
+      nakshatra: form.nakshatra || undefined,
+      manglik_status: form.manglik_status || undefined,
+      birth_place: form.birth_place || undefined,
+      birth_time: form.birth_time || undefined,
+      gotra: form.gotra || undefined,
+      horoscope_url: form.horoscope_url || undefined,
+      horoscope_available: Boolean(
+        form.rashi ||
+        form.nakshatra ||
+        (form.manglik_status && form.manglik_status !== "dont_know") ||
+        (form.birth_time && form.birth_place) ||
+        form.horoscope_url
+      ),
       introvert_extrovert: form.introvert_extrovert,
       hobbies: form.hobbies,
       habits: form.habits,
@@ -503,7 +676,7 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
   const steps = useMemo(
     () => [
       { id: "profile-basics", step: 1, label: "Essentials", shortLabel: "Essentials", icon: UserCircle, description: "Your public identity, photo, and must-have match details." },
-      { id: "background", step: 2, label: "Background", shortLabel: "Background", icon: ShieldCheck, description: "Culture, education, language, and relocation details." },
+      { id: "background", step: 2, label: "Background & Horoscope", shortLabel: "Background", icon: ShieldCheck, description: "Culture, education, horoscope & kundli, and relocation details." },
       { id: "lifestyle", step: 3, label: "Lifestyle", shortLabel: "Lifestyle", icon: Sparkles, description: "Personality, interests, appearance, and daily rhythm." },
       { id: "preferences", step: 4, label: "Goals & Intent", shortLabel: "Goals", icon: HeartHandshake, description: "Values, family goals, and what you are looking for." },
       { id: "social-presence", step: 5, label: "Social Presence", shortLabel: "Social", icon: Globe, description: "Optional public social profile links." },
@@ -861,6 +1034,226 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
                   <input type="checkbox" checked={form.willing_to_relocate} onChange={(e) => setForm({ ...form, willing_to_relocate: e.target.checked })} className="h-4 w-4 rounded border-border text-primary accent-primary" />
                   <span className="text-sm font-medium text-foreground">Willing to relocate for the right match</span>
                 </label>
+
+                {/* Horoscope & Kundli Section */}
+                <div className="sm:col-span-2 mt-4 pt-6 border-t border-border/70 space-y-5">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2.5">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm">
+                        <Sparkles className="h-4 w-4" />
+                      </span>
+                      <div>
+                        <h3 className="text-sm font-bold text-foreground">Horoscope & Kundli Details</h3>
+                        <p className="text-xs text-muted-foreground">Add or update your birth chart, rashi, nakshatra, and kundli document</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {Boolean(form.rashi || form.nakshatra || form.horoscope_url || form.birth_place || (form.manglik_status && form.manglik_status !== "dont_know")) ? (
+                        <div className="flex items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                            <Check className="h-3 w-3" />
+                            Horoscope Active
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={handleClearHoroscopeDetails}
+                            className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                            title="Reset all horoscope fields"
+                          >
+                            <RotateCcw className="mr-1 h-3 w-3" />
+                            Clear
+                          </Button>
+                        </div>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                          Optional
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Hidden Horoscope Document File Input */}
+                  <input
+                    ref={horoscopeFileInputRef}
+                    type="file"
+                    accept=".pdf,image/png,image/jpeg,image/webp,image/jpg"
+                    onChange={handleHoroscopeFileChange}
+                    className="hidden"
+                  />
+
+                  {/* Kundli Document Attachment Card */}
+                  {/* <div className="rounded-2xl border border-border/70 bg-gradient-to-br from-background/80 via-card to-primary/[0.03] p-4 shadow-sm">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Kundli / Horoscope Document</h4>
+                          <p className="text-xs text-muted-foreground">
+                            {form.horoscope_url
+                              ? "Horoscope document attached. Matches can view your Kundli chart upon mutual interest."
+                              : "Upload your Kundli chart or Janampatri (PDF or Image, max 10MB)."}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {form.horoscope_url ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              asChild
+                              className="h-8 rounded-lg text-xs"
+                            >
+                              <a href={form.horoscope_url} target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                                View Document
+                              </a>
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={uploadingHoroscope}
+                              onClick={() => horoscopeFileInputRef.current?.click()}
+                              className="h-8 rounded-lg text-xs"
+                            >
+                              {uploadingHoroscope ? (
+                                <>
+                                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                                  Uploading...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                                  Change Document
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleRemoveHoroscopeFile}
+                              className="h-8 rounded-lg text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={uploadingHoroscope}
+                            onClick={() => horoscopeFileInputRef.current?.click()}
+                            className="h-9 rounded-xl border-dashed border-primary/40 bg-primary/[0.04] px-4 text-xs font-semibold text-primary hover:bg-primary/10"
+                          >
+                            {uploadingHoroscope ? (
+                              <>
+                                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                                Uploading Horoscope...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="mr-1.5 h-4 w-4" />
+                                Attach Horoscope / Kundli File
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div> */}
+
+                  {/* Structured Astrology Fields */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label>Rashi (Moon Sign)</Label>
+                      <Select
+                        value={form.rashi || "none"}
+                        onValueChange={(v) => setForm({ ...form, rashi: v === "none" ? "" : v })}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl bg-background border-border/70">
+                          <SelectValue placeholder="Select Rashi" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Not specified</SelectItem>
+                          {RASHI_LIST.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Nakshatra (Birth Star)</Label>
+                      <Select
+                        value={form.nakshatra || "none"}
+                        onValueChange={(v) => setForm({ ...form, nakshatra: v === "none" ? "" : v })}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl bg-background border-border/70">
+                          <SelectValue placeholder="Select Nakshatra" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Not specified</SelectItem>
+                          {NAKSHATRA_LIST.map((n) => (
+                            <SelectItem key={n} value={n}>{n}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Manglik Status</Label>
+                      <Select
+                        value={form.manglik_status || "dont_know"}
+                        onValueChange={(v) => setForm({ ...form, manglik_status: v })}
+                      >
+                        <SelectTrigger className="h-10 rounded-xl bg-background border-border/70">
+                          <SelectValue placeholder="Select Manglik Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MANGLIK_OPTIONS.filter(o => o.value !== "any").map((m) => (
+                            <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Gotra</Label>
+                      <Input
+                        value={form.gotra}
+                        onChange={(e) => setForm({ ...form, gotra: e.target.value })}
+                        placeholder="e.g. Kashyapa, Bharadwaja, Vatsa"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Birth Place</Label>
+                      <Input
+                        value={form.birth_place}
+                        onChange={(e) => setForm({ ...form, birth_place: e.target.value })}
+                        placeholder="e.g. Varanasi, Uttar Pradesh"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Birth Time (Optional)</Label>
+                      <Input
+                        type="time"
+                        value={form.birth_time}
+                        onChange={(e) => setForm({ ...form, birth_time: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -1295,6 +1688,107 @@ export default function ProfilePage({ mode }: ProfilePageProps) {
                       }
                       placeholder="Reading, Travelling, Cooking"
                     />
+                  </div>
+                </div>
+
+                {/* PARTNER HOROSCOPE & KUNDLI PREFERENCES */}
+                <div className="space-y-4 rounded-2xl border border-primary/20 bg-primary/[0.03] p-4 sm:p-5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="font-bold text-foreground text-sm flex items-center gap-1.5">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        Horoscope & Kundli Preferences
+                      </Label>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Define astrological compatibility criteria for your matches.
+                      </p>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs font-semibold text-foreground cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={form.partner_horoscope_required}
+                        onChange={(e) => setForm({ ...form, partner_horoscope_required: e.target.checked })}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary accent-primary"
+                      />
+                      <span>Horoscope Required</span>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 pt-2">
+                    <div className="space-y-2">
+                      <Label>Partner Manglik Preference</Label>
+                      <Select
+                        value={form.partner_manglik || "any"}
+                        onValueChange={(v) => setForm({ ...form, partner_manglik: v })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Any Preference" /></SelectTrigger>
+                        <SelectContent>
+                          {MANGLIK_OPTIONS.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Preferred Rashis ({form.partner_rashi.length} selected)</Label>
+                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto p-1.5 rounded-lg border border-border/60 bg-background/50">
+                        {RASHI_LIST.map((r) => {
+                          const isSelected = form.partner_rashi.includes(r.value);
+                          return (
+                            <button
+                              key={r.value}
+                              type="button"
+                              onClick={() => {
+                                const next = isSelected
+                                  ? form.partner_rashi.filter((v) => v !== r.value)
+                                  : [...form.partner_rashi, r.value];
+                                setForm({ ...form, partner_rashi: next });
+                              }}
+                              className={cn(
+                                "text-[11px] px-2.5 py-1 rounded-full border font-medium transition-colors",
+                                isSelected
+                                  ? "bg-primary text-primary-foreground border-primary"
+                                  : "bg-background/80 text-muted-foreground border-border hover:border-primary/50"
+                              )}
+                            >
+                              {r.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-1">
+                    <Label>Preferred Nakshatras ({form.partner_nakshatra.length} selected)</Label>
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1.5 rounded-lg border border-border/60 bg-background/50">
+                      {NAKSHATRA_LIST.map((n) => {
+                        const isSelected = form.partner_nakshatra.includes(n);
+                        return (
+                          <button
+                            key={n}
+                            type="button"
+                            onClick={() => {
+                              const next = isSelected
+                                ? form.partner_nakshatra.filter((id) => id !== n)
+                                : [...form.partner_nakshatra, n];
+                              setForm({ ...form, partner_nakshatra: next });
+                            }}
+                            className={cn(
+                              "text-[11px] px-2.5 py-1 rounded-full border font-medium transition-colors",
+                              isSelected
+                                ? "bg-primary text-primary-foreground border-primary"
+                                : "bg-background/80 text-muted-foreground border-border hover:border-primary/50"
+                            )}
+                          >
+                            {n}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
 

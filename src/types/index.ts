@@ -16,6 +16,18 @@ export interface Profile {
   languages: string[];
   ethnicity?: string;
   willing_to_relocate: boolean;
+  marital_status?: 'Never Married' | 'Divorced' | 'Widowed' | 'Separated' | string | null;
+  photos?: string[];
+
+  // Horoscope & Kundli
+  rashi?: string | null; // Zodiac Moon Sign
+  nakshatra?: string | null; // Birth Star
+  manglik_status?: 'non_manglik' | 'manglik' | 'anshik_manglik' | 'dont_know' | string | null;
+  birth_place?: string | null;
+  birth_time?: string | null;
+  gotra?: string | null;
+  horoscope_available?: boolean | null;
+  horoscope_url?: string | null;
   
   // Personality & Lifestyle
   introvert_extrovert?: number;
@@ -74,6 +86,12 @@ export interface Profile {
   partner_marital_status?: string | null;
   partner_must_have?: string[];
   partner_deal_breakers?: string[];
+
+  // Partner Horoscope Preferences
+  partner_horoscope_required?: boolean | null;
+  partner_manglik?: 'any' | 'non_manglik' | 'manglik' | 'anshik_manglik' | 'dont_know' | string | null;
+  partner_rashi?: string[];
+  partner_nakshatra?: string[];
 
   // Embedding metadata
   needs_embedding?: boolean;

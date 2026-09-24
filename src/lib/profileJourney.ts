@@ -89,6 +89,7 @@ export function getProfileCompletion(profile?: Profile | null) {
     profile.search_intent,
     profile.family_goals,
     profile.lifestyle_choices,
+    profile.rashi || profile.nakshatra || profile.horoscope_url || profile.horoscope_available,
     Object.values(profile.prompts || {}).some(Boolean),
   ];
 
@@ -113,6 +114,9 @@ export function getMatchReasons(profile: Profile, myProfile?: Profile | null) {
   }
   if (profile.profession && profile.profession === myProfile.profession) {
     reasons.push("Similar profession");
+  }
+  if (profile.rashi && myProfile.partner_rashi && myProfile.partner_rashi.includes(profile.rashi)) {
+    reasons.push("Astrology match");
   }
   if (closeAge) reasons.push("Similar age");
   if (profile.bio && profile.profession && profile.education) {

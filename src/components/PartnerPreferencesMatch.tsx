@@ -144,7 +144,28 @@ export function PartnerPreferencesMatch({ profile, myProfile }: PartnerPreferenc
       isMatched: isFamilyGoalsMatched,
     });
 
-    // 8. Must Haves
+    // 8. Horoscope & Manglik Preferences
+    if (profile.partner_manglik || profile.partner_horoscope_required || profile.partner_rashi?.length) {
+      const manglikReq = profile.partner_manglik && profile.partner_manglik !== "any"
+        ? (profile.partner_manglik === "non_manglik" ? "Non-Manglik" : "Manglik")
+        : "";
+      const rashiReq = profile.partner_rashi?.length ? `Rashi: ${profile.partner_rashi.join(", ")}` : "";
+      const horoscopeText = [manglikReq, rashiReq].filter(Boolean).join(" • ") || "Horoscope details preferred";
+
+      const isHoroscopeMatched = Boolean(
+        (!profile.partner_manglik || profile.partner_manglik === "any" || myProfile?.manglik_status === profile.partner_manglik) &&
+        (!profile.partner_rashi?.length || (myProfile?.rashi && profile.partner_rashi.map(r => r.toLowerCase()).includes(myProfile.rashi.toLowerCase())))
+      );
+
+      list.push({
+        id: "horoscope",
+        label: "Horoscope & Kundli",
+        preferenceText: horoscopeText,
+        isMatched: isHoroscopeMatched,
+      });
+    }
+
+    // 9. Must Haves
     if (profile.partner_must_have?.length) {
       list.push({
         id: "must_haves",
@@ -233,6 +254,11 @@ export function PartnerPreferencesMatch({ profile, myProfile }: PartnerPreferenc
                     ? myProfile?.height ? `${myProfile.height} cm` : "Not added"
                     : item.id === "languages"
                     ? myProfile?.languages?.join(", ") || "Not added"
+                    : item.id === "horoscope"
+                    ? [
+                        myProfile?.manglik_status === "non_manglik" ? "Non-Manglik" : myProfile?.manglik_status === "manglik" ? "Manglik" : myProfile?.manglik_status,
+                        myProfile?.rashi ? `Rashi: ${myProfile.rashi}` : ""
+                      ].filter(Boolean).join(" • ") || "Not added"
                     : myProfile?.family_goals || "Shared"}
                 </span>
               </div>
